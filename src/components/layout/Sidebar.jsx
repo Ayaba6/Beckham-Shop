@@ -7,19 +7,25 @@ import {
   Wrench, 
   Receipt, 
   Users, 
-  Smartphone
+  Smartphone,
+  LogOut
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 const navigation = [
   { name: 'Tableau de bord', to: '/dashboard', icon: LayoutDashboard },
   { name: 'Caisse (POS)', to: '/pos', icon: ShoppingCart },
   { name: 'Stock Accessoires', to: '/inventory', icon: Package },
+  { name: 'Téléphones & IMEI', to: '/phones', icon: Smartphone },
   { name: 'S.A.V & Réparations', to: '/sav', icon: Wrench },
   { name: 'Historique Ventes', to: '/sales', icon: Receipt },
   { name: 'Clients', to: '/clients', icon: Users },
 ];
 
 export default function Sidebar() {
+  const { user, signOut } = useAuth();
+  const email = user?.email || 'Utilisateur';
+
   return (
     <aside className="w-64 bg-slate-900 text-slate-100 flex flex-col h-screen sticky top-0 border-r border-slate-800">
       {/* Brand Header */}
@@ -60,12 +66,19 @@ export default function Sidebar() {
       <div className="p-4 border-t border-slate-800">
         <div className="flex items-center gap-3 px-2 py-1.5">
           <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center font-bold text-slate-200">
-            A
+            {email.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">Admin Boutique</p>
-            <p className="text-xs text-slate-400 truncate">Vendeur Principal</p>
+            <p className="text-sm font-medium text-white truncate">{email}</p>
+            <p className="text-xs text-slate-400 truncate">Vendeur</p>
           </div>
+          <button
+            onClick={signOut}
+            title="Se déconnecter"
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </aside>

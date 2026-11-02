@@ -8,8 +8,13 @@ import {
   Eye, 
   Tag,
   RefreshCw,
-  Phone
+  Phone,
+  FileDown,
+  ShieldCheck
 } from 'lucide-react';
+import { generateInvoicePdf } from '../../components/pdf/InvoicePdf';
+import { generateWarrantyPdf } from '../../components/pdf/WarrantyPdf';
+import Button from '../../components/common/Button';
 import { supabase } from '../../config/supabaseClient';
 import { formatCurrency } from '../../utils/formatters';
 import Badge from '../../components/common/Badge';
@@ -73,9 +78,19 @@ export default function SalesHistoryPage() {
                     .maybeSingle();
                   productInfo = prodData;
                 }
+                let imeiInfo = null;
+                if (item.imei_id) {
+                  const { data: imeiData } = await supabase
+                    .from('product_imeis')
+                    .select('imei_number')
+                    .eq('id', item.imei_id)
+                    .maybeSingle();
+                  imeiInfo = imeiData;
+                }
                 return {
                   ...item,
-                  products: productInfo
+                  products: productInfo,
+                  product_imeis: imeiInfo
                 };
               })
             );
@@ -253,8 +268,33 @@ export default function SalesHistoryPage() {
                       {item.products?.name || 'Accessoire'} {item.products?.brand ? `(${item.products.brand})` : ''}
                     </p>
                     <p className="text-xs text-gray-500">{item.quantity} x {formatCurrency(item.unit_price)}</p>
+                    {item.product_imeis?.imei_number && (
+                      <p className="text-xs font-mono text-indigo-600">IMEI : {item.product_imeis.imei_number}</p>
+                    )}
                   </div>
-                  <span className="font-bold text-gray-900">{formatCurrency(item.subtotal)}</span>
+                  <div className="flex items-center gap-2">
+                    {item.product_imeis?.imei_number && (
+                      <button
+                        onClick={() =>
+                          generateWarrantyPdf({
+                            type: 'sale',
+                            reference: `${selectedSale.id.slice(0, 8).toUpperCase()}-${item.product_imeis.imei_number.slice(-4)}`,
+                            date: selectedSale.created_at,
+                            customerName: selectedSale.customers?.full_name,
+                            customerPhone: selectedSale.customers?.phone,
+                            deviceName: [item.products?.name, item.products?.brand].filter(Boolean).join(' - '),
+                            imei: item.product_imeis.imei_number,
+                            amount: item.unit_price,
+                          })
+                        }
+                        title="Certificat de garantie"
+                        className="p-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                      </button>
+                    )}
+                    <span className="font-bold text-gray-900">{formatCurrency(item.subtotal)}</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -271,6 +311,11 @@ export default function SalesHistoryPage() {
                 <span className="text-indigo-600">{formatCurrency(selectedSale.total_amount)}</span>
               </div>
             </div>
+
+            <Button onClick={() => generateInvoicePdf(selectedSale)} className="w-full py-2.5">
+              <FileDown className="w-4 h-4" />
+              Télécharger la facture (PDF)
+            </Button>
           </div>
         )}
       </Modal>

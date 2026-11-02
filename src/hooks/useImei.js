@@ -76,10 +76,29 @@ export function useImei() {
     }
   };
 
+  // Changer le statut d'un IMEI (en stock, vendu, SAV, défectueux)
+  const updateImeiStatus = async (imeiId, status) => {
+    try {
+      const { data, error } = await supabase
+        .from('product_imeis')
+        .update({ status })
+        .eq('id', imeiId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (err) {
+      console.error('Erreur mise à jour IMEI:', err.message);
+      return { success: false, error: err.message };
+    }
+  };
+
   return {
     loading,
     fetchImeisByProduct,
     addImeis,
     searchImei,
+    updateImeiStatus,
   };
 }

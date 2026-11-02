@@ -1,33 +1,53 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
+import { useAuth } from '../context/AuthContext';
 
 // Imports des pages réelles
+import LoginPage from '../pages/auth/LoginPage';
 import DashboardPage from '../pages/dashboard/DashboardPage';
 import PosPage from '../pages/pos/PosPage';
 import ProductListPage from '../pages/inventory/ProductListPage';
+import ImeiManagerPage from '../pages/inventory/ImeiManagerPage';
 import RepairsPage from '../pages/sav/RepairsPage';
-import SalesHistoryPage from '../pages/sales/SalesHistoryPage'; // Import de la vraie page
+import SalesHistoryPage from '../pages/sales/SalesHistoryPage';
+import ClientsPage from '../pages/clients/ClientsPage';
 
-// Page secondaire temporaire pour les clients (en attendant sa création)
-const Clients = () => (
-  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-    <h1 className="text-2xl font-bold text-gray-800 mb-2">Gestion des Clients</h1>
-    <p className="text-gray-500">Ici s'affichera le répertoire des clients et leur historique d'achats.</p>
-  </div>
-);
+// Redirige vers /login si aucun utilisateur n'est connecté
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <div className="p-8 text-center text-gray-500">Chargement...</div>;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  return children;
+}
 
 export default function AppRoutes() {
   return (
     <Routes>
-      <Route element={<MainLayout />}>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        element={
+          <ProtectedRoute>
+            <MainLayout />
+          </ProtectedRoute>
+        }
+      >
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/pos" element={<PosPage />} />
         <Route path="/inventory" element={<ProductListPage />} />
+        <Route path="/phones" element={<ImeiManagerPage />} />
         <Route path="/sav" element={<RepairsPage />} />
-        <Route path="/sales" element={<SalesHistoryPage />} /> {/* Route pointant vers la vraie page */}
-        <Route path="/clients" element={<Clients />} />
+        <Route path="/sales" element={<SalesHistoryPage />} />
+        <Route path="/clients" element={<ClientsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

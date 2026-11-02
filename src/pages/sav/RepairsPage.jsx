@@ -8,8 +8,10 @@ import {
   AlertCircle,
   Phone,
   User,
-  Smartphone
+  Smartphone,
+  ShieldCheck
 } from 'lucide-react';
+import { generateWarrantyPdf } from '../../components/pdf/WarrantyPdf';
 import { useRepairs } from '../../hooks/useRepairs';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { REPAIR_STATUSES } from '../../utils/constants';
@@ -218,17 +220,40 @@ export default function RepairsPage() {
                       {getStatusBadge(repair.status)}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <select
-                        value={repair.status}
-                        onChange={(e) => handleStatusChange(repair.id, e.target.value)}
-                        className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                      >
-                        {REPAIR_STATUSES.map((status) => (
-                          <option key={status.id} value={status.id}>
-                            {status.label}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="inline-flex items-center gap-2">
+                        {(repair.status === 'repaired' || repair.status === 'delivered') && (
+                          <button
+                            onClick={() =>
+                              generateWarrantyPdf({
+                                type: 'repair',
+                                reference: `SAV-${repair.id.slice(0, 8).toUpperCase()}`,
+                                date: repair.repaired_at || repair.received_at,
+                                customerName: repair.customers?.full_name,
+                                customerPhone: repair.customers?.phone,
+                                deviceName: repair.device_name,
+                                imei: repair.imei_or_serial,
+                                description: repair.issue_description,
+                                amount: repair.estimated_cost,
+                              })
+                            }
+                            title="Certificat de garantie"
+                            className="p-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
+                          >
+                            <ShieldCheck className="w-4 h-4" />
+                          </button>
+                        )}
+                        <select
+                          value={repair.status}
+                          onChange={(e) => handleStatusChange(repair.id, e.target.value)}
+                          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        >
+                          {REPAIR_STATUSES.map((status) => (
+                            <option key={status.id} value={status.id}>
+                              {status.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </td>
                   </tr>
                 ))
