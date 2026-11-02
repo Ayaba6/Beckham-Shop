@@ -8,7 +8,8 @@ import {
   Receipt, 
   Users, 
   Smartphone,
-  LogOut
+  LogOut,
+  HandCoins
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -20,6 +21,7 @@ const navigation = [
   { name: 'S.A.V & Réparations', to: '/sav', icon: Wrench },
   { name: 'Historique Ventes', to: '/sales', icon: Receipt },
   { name: 'Clients', to: '/clients', icon: Users },
+  { name: 'Crédits Clients', to: '/credits', icon: HandCoins },
 ];
 
 export default function Sidebar() {

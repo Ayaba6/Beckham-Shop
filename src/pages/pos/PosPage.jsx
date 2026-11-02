@@ -11,15 +11,27 @@ import {
   Tag,
   History,
   Calendar,
-  ArrowLeft
+  ArrowLeft,
+  FileDown
 } from 'lucide-react';
+import { decrementStock } from '../../hooks/useSales';
+import { addCreditPayment } from '../../hooks/useCredits';
+import { POS_PAYMENT_METHODS, REPAYMENT_METHODS } from '../../utils/constants';
+import { generateInvoicePdf } from '../../components/pdf/InvoicePdf';
 import { useProducts } from '../../hooks/useProducts';
 import { useCashRegister } from '../../hooks/useCashRegister';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatPaymentMethod } from '../../utils/formatters';
 import { supabase } from '../../config/supabaseClient';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 import Badge from '../../components/common/Badge';
+
+const emptySessionSummary = {
+  totalSales: 0,
+  salesByMethod: {},
+  creditCashReceived: 0,
+  creditOtherReceived: 0,
+};
 
 export default function PosPage() {
   const { products, loading: productsLoading, refreshProducts } = useProducts();
@@ -33,13 +45,16 @@ export default function PosPage() {
   const [discountAmount, setDiscountAmount] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loadingCheckout, setLoadingCheckout] = useState(false);
+  const [lastSale, setLastSale] = useState(null);
+  const [creditDeposit, setCreditDeposit] = useState('');
+  const [creditDepositMethod, setCreditDepositMethod] = useState('cash');
 
   // États pour les modales
   const [isOpeningModalOpen, setIsOpeningModalOpen] = useState(false);
   const [openingBalanceInput, setOpeningBalanceInput] = useState('');
   const [closingBalanceInput, setClosingBalanceInput] = useState('');
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
-  const [sessionSalesTotal, setSessionSalesTotal] = useState(0);
+  const [sessionSummary, setSessionSummary] = useState(emptySessionSummary);
 
   // Historique des caisses fermées et filtres
   const [closedSessions, setClosedSessions] = useState([]);
@@ -153,34 +168,63 @@ export default function PosPage() {
     }
   };
 
-  // Calculer les ventes de la session en cours lors de la fermeture
+  // Calculer le récapitulatif de la session en cours lors de la fermeture.
+  // Seuls les encaissements en espèces doivent se retrouver dans le tiroir :
+  // ventes payées en espèces + acomptes et remboursements de crédit reçus en espèces.
   const handleOpenCloseModal = async () => {
     if (!currentSession) return;
     try {
-      const { data, error } = await supabase
-        .from('sales')
-        .select('total_amount')
-        .gte('created_at', currentSession.opened_at);
+      const [salesRes, paymentsRes] = await Promise.all([
+        supabase
+          .from('sales')
+          .select('total_amount, payment_method')
+          .gte('created_at', currentSession.opened_at),
+        supabase
+          .from('credit_payments')
+          .select('amount, payment_method')
+          .gte('created_at', currentSession.opened_at),
+      ]);
 
-      if (!error && data) {
-        const total = data.reduce((sum, s) => sum + Number(s.total_amount), 0);
-        setSessionSalesTotal(total);
-      }
+      if (salesRes.error) throw salesRes.error;
+      // Table credit_payments absente : on ignore simplement les paiements de crédit
+      if (paymentsRes.error) console.warn('Paiements de crédit non chargés:', paymentsRes.error.message);
+
+      const salesByMethod = {};
+      let totalSales = 0;
+      (salesRes.data || []).forEach((s) => {
+        const amount = Number(s.total_amount) || 0;
+        salesByMethod[s.payment_method] = (salesByMethod[s.payment_method] || 0) + amount;
+        totalSales += amount;
+      });
+
+      let creditCashReceived = 0;
+      let creditOtherReceived = 0;
+      (paymentsRes.data || []).forEach((p) => {
+        if (p.payment_method === 'cash') creditCashReceived += Number(p.amount) || 0;
+        else creditOtherReceived += Number(p.amount) || 0;
+      });
+
+      setSessionSummary({ totalSales, salesByMethod, creditCashReceived, creditOtherReceived });
     } catch (err) {
-      console.error(err);
+      console.error('Erreur calcul clôture de caisse:', err.message);
+      setSessionSummary(emptySessionSummary);
     }
     setIsCloseModalOpen(true);
   };
 
+  const expectedCash =
+    Number(currentSession?.opening_balance || 0) +
+    (sessionSummary.salesByMethod.cash || 0) +
+    sessionSummary.creditCashReceived;
+
   // Fermer la caisse
   const handleCloseRegisterSubmit = async (e) => {
     e.preventDefault();
-    const expected = Number(currentSession.opening_balance) + Number(sessionSalesTotal);
     const res = await closeRegister(
-      currentSession.id, 
-      closingBalanceInput, 
-      expected, 
-      sessionSalesTotal
+      currentSession.id,
+      closingBalanceInput,
+      expectedCash,
+      sessionSummary.totalSales
     );
 
     if (res.success) {
@@ -231,8 +275,52 @@ export default function PosPage() {
       return;
     }
 
+    if (discountVal > subtotalCart) {
+      alert('La réduction ne peut pas dépasser le sous-total.');
+      return;
+    }
+
+    const isCredit = paymentMethod === 'credit';
+    const depositVal = isCredit ? Number(creditDeposit) || 0 : 0;
+    if (isCredit) {
+      if (!customerPhone.trim()) {
+        alert('Une vente à crédit nécessite le téléphone du client.');
+        return;
+      }
+      if (depositVal < 0 || depositVal >= totalCartAmount) {
+        alert('L\'acompte doit être inférieur au total. Pour un paiement complet, choisissez un autre mode de paiement.');
+        return;
+      }
+    }
+
     setLoadingCheckout(true);
     try {
+      // 1. Revérifier le stock réel en base (un autre poste a pu vendre entre-temps)
+      const { data: freshStock, error: stockErr } = await supabase
+        .from('products')
+        .select('id, name, stock_quantity')
+        .in('id', cart.map((item) => item.id));
+
+      if (stockErr) throw stockErr;
+
+      const shortages = cart.filter((item) => {
+        const fresh = freshStock.find((p) => p.id === item.id);
+        return !fresh || fresh.stock_quantity < item.quantity;
+      });
+
+      if (shortages.length > 0) {
+        const details = shortages
+          .map((item) => {
+            const fresh = freshStock.find((p) => p.id === item.id);
+            return `- ${item.name} : ${fresh ? fresh.stock_quantity : 0} disponible(s), ${item.quantity} demandé(s)`;
+          })
+          .join('\n');
+        alert('Stock insuffisant, la vente n\'a pas été enregistrée :\n' + details);
+        refreshProducts();
+        return;
+      }
+
+      // 2. Retrouver ou créer le client
       let customerId = null;
       if (customerPhone) {
         const { data: existingCust } = await supabase
@@ -253,6 +341,11 @@ export default function PosPage() {
         }
       }
 
+      if (isCredit && !customerId) {
+        alert('Client introuvable : saisissez aussi son nom pour l\'enregistrer avant une vente à crédit.');
+        return;
+      }
+
       const { data: saleData, error: saleErr } = await supabase
         .from('sales')
         .insert([{
@@ -267,28 +360,74 @@ export default function PosPage() {
 
       if (saleErr) throw saleErr;
 
-      for (const item of cart) {
-        await supabase.from('sale_items').insert([{
-          sale_id: saleData.id,
-          product_id: item.id,
-          quantity: item.quantity,
-          unit_price: item.selling_price,
-          subtotal: item.selling_price * item.quantity
-        }]);
+      // 3. Enregistrer toutes les lignes en une seule requête ; en cas d'échec, annuler la vente
+      const saleItems = cart.map((item) => ({
+        sale_id: saleData.id,
+        product_id: item.id,
+        quantity: item.quantity,
+        unit_price: item.selling_price,
+        subtotal: item.selling_price * item.quantity
+      }));
 
-        await supabase
-          .from('products')
-          .update({ stock_quantity: item.stock_quantity - item.quantity })
-          .eq('id', item.id);
+      const { error: itemsErr } = await supabase.from('sale_items').insert(saleItems);
+      if (itemsErr) {
+        await supabase.from('sales').delete().eq('id', saleData.id);
+        throw itemsErr;
       }
 
-      setSuccessMsg('Vente enregistrée avec succès !');
+      // 4. Décrémenter le stock de façon sûre
+      const stockFailures = [];
+      for (const item of cart) {
+        const res = await decrementStock(item.id, item.quantity);
+        if (!res.success) stockFailures.push(`- ${item.name} : ${res.error}`);
+      }
+      if (stockFailures.length > 0) {
+        alert(
+          'Vente enregistrée, mais le stock de certains articles n\'a pas pu être mis à jour. ' +
+          'Corrigez-le depuis la page Stock :\n' + stockFailures.join('\n')
+        );
+      }
+
+      // 5. Enregistrer l'acompte d'une vente à crédit
+      let depositSaved = 0;
+      if (depositVal > 0) {
+        const res = await addCreditPayment({
+          saleId: saleData.id,
+          customerId,
+          amount: depositVal,
+          paymentMethod: creditDepositMethod,
+          notes: 'Acompte',
+        });
+        if (res.success) {
+          depositSaved = depositVal;
+        } else {
+          alert('Vente enregistrée, mais l\'acompte n\'a pas pu l\'être : ' + res.error + '\nAjoutez-le depuis la page Crédits.');
+        }
+      }
+
+      // 6. Garder la vente pour proposer la facture
+      setLastSale({
+        ...saleData,
+        remaining: isCredit ? totalCartAmount - depositSaved : 0,
+        customers: customerPhone || customerName
+          ? { full_name: customerName || null, phone: customerPhone || null }
+          : null,
+        sale_items: cart.map((item, index) => ({
+          id: index,
+          quantity: item.quantity,
+          unit_price: item.selling_price,
+          subtotal: item.selling_price * item.quantity,
+          products: { name: item.name, brand: item.brand }
+        }))
+      });
+
       setCart([]);
       setCustomerPhone('');
       setCustomerName('');
       setDiscountAmount('');
+      setCreditDeposit('');
+      setPaymentMethod('cash');
       refreshProducts();
-      setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
       console.error('Erreur lors de l\'encaissement:', err.message);
       alert('Erreur lors de l\'encaissement : ' + err.message);
@@ -530,18 +669,42 @@ export default function PosPage() {
       {/* MODALE DE FERMETURE DE CAISSE */}
       <Modal isOpen={isCloseModalOpen} onClose={() => setIsCloseModalOpen(false)} title="Clôture de Caisse">
         <form onSubmit={handleCloseRegisterSubmit} className="space-y-4">
+          {/* Ventes de la session par mode de paiement (informatif) */}
+          <div className="p-4 bg-white rounded-xl border border-gray-200 space-y-1.5 text-xs text-gray-600">
+            <p className="font-semibold text-gray-800 text-sm mb-1">
+              Ventes de la session : {formatCurrency(sessionSummary.totalSales)}
+            </p>
+            {Object.entries(sessionSummary.salesByMethod).map(([method, amount]) => (
+              <div key={method} className="flex justify-between">
+                <span>{formatPaymentMethod(method)}{method === 'credit' ? ' (non encaissé)' : ''}</span>
+                <span>{formatCurrency(amount)}</span>
+              </div>
+            ))}
+            {sessionSummary.creditOtherReceived > 0 && (
+              <div className="flex justify-between">
+                <span>Crédits remboursés hors espèces</span>
+                <span>{formatCurrency(sessionSummary.creditOtherReceived)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Espèces attendues dans le tiroir */}
           <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-2 text-sm text-gray-700">
             <div className="flex justify-between">
               <span>Fond initial :</span>
               <span className="font-semibold">{formatCurrency(currentSession?.opening_balance || 0)}</span>
             </div>
             <div className="flex justify-between">
-              <span>Total des ventes du jour :</span>
-              <span className="font-semibold text-emerald-600">{formatCurrency(sessionSalesTotal)}</span>
+              <span>Ventes en espèces :</span>
+              <span className="font-semibold text-emerald-600">{formatCurrency(sessionSummary.salesByMethod.cash || 0)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Acomptes et remboursements en espèces :</span>
+              <span className="font-semibold text-emerald-600">{formatCurrency(sessionSummary.creditCashReceived)}</span>
             </div>
             <div className="flex justify-between border-t border-gray-200 pt-2 font-bold text-gray-900">
-              <span>Total théorique attendu :</span>
-              <span>{formatCurrency(Number(currentSession?.opening_balance || 0) + Number(sessionSalesTotal))}</span>
+              <span>Espèces attendues en caisse :</span>
+              <span>{formatCurrency(expectedCash)}</span>
             </div>
           </div>
 
@@ -555,6 +718,16 @@ export default function PosPage() {
               onChange={(e) => setClosingBalanceInput(e.target.value)}
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
+            {closingBalanceInput !== '' && (() => {
+              const gap = Number(closingBalanceInput) - expectedCash;
+              return (
+                <p className={`mt-1.5 text-xs font-semibold ${gap === 0 ? 'text-emerald-600' : gap > 0 ? 'text-amber-600' : 'text-red-600'}`}>
+                  {gap === 0
+                    ? 'Caisse juste'
+                    : `Écart : ${gap > 0 ? '+' : '-'}${formatCurrency(Math.abs(gap))} (${gap > 0 ? 'excédent' : 'manquant'})`}
+                </p>
+              );
+            })()}
           </div>
 
           <div className="flex gap-3 pt-2">
@@ -566,6 +739,36 @@ export default function PosPage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* MODALE DE VENTE ENREGISTRÉE */}
+      <Modal isOpen={!!lastSale} onClose={() => setLastSale(null)} title="Vente enregistrée">
+        {lastSale && (
+          <div className="space-y-4 text-center">
+            <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
+            <div>
+              <p className="text-sm text-gray-500">Vente #{lastSale.id.slice(0, 8)}</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(lastSale.total_amount)}</p>
+              {lastSale.customers?.full_name && (
+                <p className="text-sm text-gray-500">{lastSale.customers.full_name}</p>
+              )}
+              {lastSale.remaining > 0 && (
+                <p className="mt-2 text-sm font-semibold text-orange-700">
+                  Crédit : reste dû {formatCurrency(lastSale.remaining)}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="secondary" onClick={() => setLastSale(null)} className="w-1/2">
+                Nouvelle vente
+              </Button>
+              <Button onClick={() => generateInvoicePdf(lastSale)} className="w-1/2">
+                <FileDown className="w-4 h-4" />
+                Facture PDF
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* INTERFACE PRINCIPALE DE CAISSE (2 COLONNES) */}
@@ -725,10 +928,41 @@ export default function PosPage() {
                 onChange={(e) => setPaymentMethod(e.target.value)}
                 className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
               >
-                <option value="cash">Espèces</option>
-                <option value="mobile_money">Mobile Money</option>
-                <option value="card">Carte Bancaire</option>
+                {POS_PAYMENT_METHODS.map((m) => (
+                  <option key={m.id} value={m.id}>{m.label}</option>
+                ))}
               </select>
+
+              {paymentMethod === 'credit' && (
+                <div className="p-2.5 bg-orange-50 border border-orange-200 rounded-lg space-y-2">
+                  <p className="text-xs text-orange-800">
+                    Vente à crédit : le téléphone du client est obligatoire (et son nom s'il est nouveau).
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Acompte (FCFA)"
+                      value={creditDeposit}
+                      onChange={(e) => setCreditDeposit(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
+                    />
+                    <select
+                      value={creditDepositMethod}
+                      onChange={(e) => setCreditDepositMethod(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
+                    >
+                      {REPAYMENT_METHODS.map((m) => (
+                        <option key={m.id} value={m.id}>{m.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex justify-between text-xs font-semibold text-orange-900">
+                    <span>Reste dû après acompte :</span>
+                    <span>{formatCurrency(Math.max(0, totalCartAmount - (Number(creditDeposit) || 0)))}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

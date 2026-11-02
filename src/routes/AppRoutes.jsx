@@ -12,6 +12,7 @@ import ImeiManagerPage from '../pages/inventory/ImeiManagerPage';
 import RepairsPage from '../pages/sav/RepairsPage';
 import SalesHistoryPage from '../pages/sales/SalesHistoryPage';
 import ClientsPage from '../pages/clients/ClientsPage';
+import CreditsPage from '../pages/credits/CreditsPage';
 
 // Redirige vers /login si aucun utilisateur n'est connecté
 function ProtectedRoute({ children }) {
@@ -48,6 +49,7 @@ export default function AppRoutes() {
         <Route path="/sav" element={<RepairsPage />} />
         <Route path="/sales" element={<SalesHistoryPage />} />
         <Route path="/clients" element={<ClientsPage />} />
+        <Route path="/credits" element={<CreditsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

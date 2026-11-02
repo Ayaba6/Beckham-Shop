@@ -16,7 +16,7 @@ import { generateInvoicePdf } from '../../components/pdf/InvoicePdf';
 import { generateWarrantyPdf } from '../../components/pdf/WarrantyPdf';
 import Button from '../../components/common/Button';
 import { supabase } from '../../config/supabaseClient';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatPaymentMethod } from '../../utils/formatters';
 import Badge from '../../components/common/Badge';
 import Modal from '../../components/common/Modal';
 
@@ -207,7 +207,7 @@ export default function SalesHistoryPage() {
                     </td>
                     <td className="px-6 py-4">
                       <Badge colorClass="bg-gray-100 text-gray-800 capitalize">
-                        {sale.payment_method === 'cash' ? 'Espèces' : sale.payment_method === 'mobile_money' ? 'Mobile Money' : 'Carte'}
+                        {formatPaymentMethod(sale.payment_method)}
                       </Badge>
                     </td>
                     <td className="px-6 py-4 text-xs font-medium text-amber-600">
@@ -256,7 +256,7 @@ export default function SalesHistoryPage() {
                   {selectedSale.customers?.phone || 'Non renseigné'}
                 </span>
               </p>
-              <p><strong>Mode de paiement :</strong> <span className="capitalize">{selectedSale.payment_method}</span></p>
+              <p><strong>Mode de paiement :</strong> <span>{formatPaymentMethod(selectedSale.payment_method)}</span></p>
             </div>
 
             <h4 className="font-bold text-sm text-gray-900 border-b border-gray-100 pb-2">Articles achetés</h4>

@@ -9,6 +9,17 @@ export const PAYMENT_METHODS = [
   { id: 'credit', label: 'Crédit / Échelonné' },
 ];
 
+// Modes de paiement proposés par la caisse (valeurs enregistrées dans sales.payment_method)
+export const POS_PAYMENT_METHODS = [
+  { id: 'cash', label: 'Espèces' },
+  { id: 'mobile_money', label: 'Mobile Money' },
+  { id: 'card', label: 'Carte Bancaire' },
+  { id: 'credit', label: 'Crédit / Échelonné' },
+];
+
+// Modes acceptés pour un acompte ou un remboursement de crédit
+export const REPAYMENT_METHODS = POS_PAYMENT_METHODS.filter((m) => m.id !== 'credit');
+
 export const IMEI_STATUS = {
   IN_STOCK: 'in_stock',
   SOLD: 'sold',

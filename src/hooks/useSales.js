@@ -1,6 +1,49 @@
 import { useState } from 'react';
 import { supabase } from '../config/supabaseClient';
 
+/**
+ * Décrémente le stock d'un accessoire sans risque d'écraser une vente simultanée.
+ * Utilise la fonction SQL decrement_stock si elle existe (voir supabase/decrement_stock.sql),
+ * sinon une mise à jour conditionnelle : elle n'est appliquée que si le stock n'a pas
+ * changé depuis la lecture, et elle est relancée dans le cas contraire.
+ */
+export async function decrementStock(productId, qty) {
+  const { error: rpcError } = await supabase.rpc('decrement_stock', {
+    row_id: productId,
+    qty,
+  });
+
+  if (!rpcError) return { success: true };
+
+  // La fonction existe mais a refusé (stock insuffisant) : ne pas contourner
+  if (rpcError.code !== 'PGRST202' && rpcError.code !== '42883') {
+    return { success: false, error: rpcError.message };
+  }
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data: current, error: readError } = await supabase
+      .from('products')
+      .select('stock_quantity')
+      .eq('id', productId)
+      .single();
+
+    if (readError) return { success: false, error: readError.message };
+    if (current.stock_quantity < qty) return { success: false, error: 'Stock insuffisant' };
+
+    const { data: updated, error: updateError } = await supabase
+      .from('products')
+      .update({ stock_quantity: current.stock_quantity - qty })
+      .eq('id', productId)
+      .eq('stock_quantity', current.stock_quantity)
+      .select('id');
+
+    if (updateError) return { success: false, error: updateError.message };
+    if (updated && updated.length > 0) return { success: true };
+  }
+
+  return { success: false, error: 'Stock modifié simultanément, veuillez vérifier' };
+}
+
 export function useSales() {
   const [loading, setLoading] = useState(false);
 
@@ -54,26 +97,8 @@ export function useSales() {
           if (imeiError) throw imeiError;
         } else {
           // Si c'est un accessoire, on décrémente la quantité en stock
-          const { error: stockError } = await supabase.rpc('decrement_stock', {
-            row_id: item.productId,
-            qty: item.quantity,
-          });
-
-          // Si la fonction RPC n'existe pas encore, on fait un update classique :
-          if (stockError) {
-            const { data: currentProd } = await supabase
-              .from('products')
-              .select('stock_quantity')
-              .eq('id', item.productId)
-              .single();
-
-            if (currentProd) {
-              await supabase
-                .from('products')
-                .update({ stock_quantity: Math.max(0, currentProd.stock_quantity - item.quantity) })
-                .eq('id', item.productId);
-            }
-          }
+          const stockResult = await decrementStock(item.productId, item.quantity);
+          if (!stockResult.success) throw new Error(stockResult.error);
         }
       }
 

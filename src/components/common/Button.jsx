@@ -18,6 +18,7 @@ export default function Button({
     secondary: 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300',
     danger: 'bg-red-600 hover:bg-red-700 text-white',
     success: 'bg-green-600 hover:bg-green-700 text-white',
+    outline: 'bg-white hover:bg-gray-50 border border-gray-300',
   };
 
   return (

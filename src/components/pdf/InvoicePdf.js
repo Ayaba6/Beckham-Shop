@@ -1,7 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { formatCurrency } from '../../utils/formatters';
-import { PAYMENT_METHODS } from '../../utils/constants';
+import { formatCurrency, formatPaymentMethod } from '../../utils/formatters';
 
 export const SHOP_NAME = 'ShopManager';
 export const SHOP_SUBTITLE = 'Téléphones, Accessoires & Réparations';
@@ -47,9 +46,6 @@ export function drawShopHeader(doc, title, reference) {
   return 40;
 }
 
-function paymentLabel(method) {
-  return PAYMENT_METHODS.find((m) => m.id === method)?.label || method || '-';
-}
 
 /**
  * Génère et télécharge la facture d'une vente.
@@ -72,7 +68,7 @@ export function generateInvoicePdf(sale) {
   doc.text(sale.customers?.full_name || 'Client de passage', 14, y + 6);
   if (sale.customers?.phone) doc.text(`Tél : ${sale.customers.phone}`, 14, y + 12);
   doc.text(`Date : ${pdfDate(sale.created_at)}`, pageWidth / 2 + 10, y + 6);
-  doc.text(`Paiement : ${paymentLabel(sale.payment_method)}`, pageWidth / 2 + 10, y + 12);
+  doc.text(`Paiement : ${formatPaymentMethod(sale.payment_method)}`, pageWidth / 2 + 10, y + 12);
   y += 22;
 
   // Lignes de la facture

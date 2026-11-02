@@ -1,3 +1,17 @@
+import { POS_PAYMENT_METHODS, PAYMENT_METHODS } from './constants';
+
+/**
+ * Libellé lisible d'un mode de paiement (ex: 'mobile_money' -> 'Mobile Money')
+ */
+export function formatPaymentMethod(method) {
+  return (
+    POS_PAYMENT_METHODS.find((m) => m.id === method)?.label ||
+    PAYMENT_METHODS.find((m) => m.id === method)?.label ||
+    method ||
+    '-'
+  );
+}
+
 /**
  * Formate un montant en devise (ex: FCFA)
  */
