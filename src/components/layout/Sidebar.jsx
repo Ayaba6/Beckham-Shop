@@ -9,7 +9,8 @@ import {
   Users, 
   Smartphone,
   LogOut,
-  HandCoins
+  HandCoins,
+  PackagePlus
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -17,6 +18,7 @@ const navigation = [
   { name: 'Tableau de bord', to: '/dashboard', icon: LayoutDashboard },
   { name: 'Caisse (POS)', to: '/pos', icon: ShoppingCart },
   { name: 'Stock Accessoires', to: '/inventory', icon: Package },
+  { name: 'Réapprovisionnements', to: '/restocks', icon: PackagePlus },
   { name: 'Téléphones & IMEI', to: '/phones', icon: Smartphone },
   { name: 'S.A.V & Réparations', to: '/sav', icon: Wrench },
   { name: 'Historique Ventes', to: '/sales', icon: Receipt },

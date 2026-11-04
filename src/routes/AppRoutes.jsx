@@ -9,6 +9,7 @@ import DashboardPage from '../pages/dashboard/DashboardPage';
 import PosPage from '../pages/pos/PosPage';
 import ProductListPage from '../pages/inventory/ProductListPage';
 import ImeiManagerPage from '../pages/inventory/ImeiManagerPage';
+import StockEntriesPage from '../pages/inventory/StockEntriesPage';
 import RepairsPage from '../pages/sav/RepairsPage';
 import SalesHistoryPage from '../pages/sales/SalesHistoryPage';
 import ClientsPage from '../pages/clients/ClientsPage';
@@ -45,6 +46,7 @@ export default function AppRoutes() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/pos" element={<PosPage />} />
         <Route path="/inventory" element={<ProductListPage />} />
+        <Route path="/restocks" element={<StockEntriesPage />} />
         <Route path="/phones" element={<ImeiManagerPage />} />
         <Route path="/sav" element={<RepairsPage />} />
         <Route path="/sales" element={<SalesHistoryPage />} />

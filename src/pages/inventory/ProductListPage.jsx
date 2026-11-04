@@ -5,8 +5,10 @@ import {
   Search, 
   CheckCircle2, 
   AlertTriangle,
-  Edit2
+  Edit2,
+  PackagePlus
 } from 'lucide-react';
+import RestockModal from '../../components/inventory/RestockModal';
 import { useProducts } from '../../hooks/useProducts';
 import { formatCurrency } from '../../utils/formatters';
 import Button from '../../components/common/Button';
@@ -20,6 +22,13 @@ export default function ProductListPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null); // null = Ajout, objet = Modification
   const [successMsg, setSuccessMsg] = useState('');
+  const [restockingProduct, setRestockingProduct] = useState(null);
+
+  const handleRestockSuccess = (msg) => {
+    setSuccessMsg(msg);
+    setTimeout(() => setSuccessMsg(''), 3000);
+    refreshProducts();
+  };
 
   const [formData, setFormData] = useState({
     name: '',
@@ -185,14 +194,24 @@ export default function ProductListPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdit(product)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium transition-colors"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                          Modifier
-                        </button>
+                        <div className="inline-flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setRestockingProduct(product)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-medium transition-colors"
+                          >
+                            <PackagePlus className="w-3.5 h-3.5" />
+                            Réappro.
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(product)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium transition-colors"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                            Modifier
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -202,6 +221,14 @@ export default function ProductListPage() {
           </table>
         </div>
       </div>
+
+      {/* MODAL : RÉAPPROVISIONNEMENT */}
+      <RestockModal
+        isOpen={!!restockingProduct}
+        onClose={() => setRestockingProduct(null)}
+        product={restockingProduct}
+        onSuccess={handleRestockSuccess}
+      />
 
       {/* MODAL : AJOUTER OU MODIFIER UN ACCESSOIRE */}
       <Modal
