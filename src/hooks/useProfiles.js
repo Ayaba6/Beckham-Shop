@@ -52,11 +52,39 @@ export function useProfiles() {
     }
   };
 
+  // Créer un compte via l'Edge Function create-user (administrateurs uniquement)
+  const createUser = async ({ email, password, fullName, role }) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: { email, password, full_name: fullName, role },
+      });
+
+      if (error) {
+        // Lire le message renvoyé par la fonction (ex : email déjà utilisé)
+        let message = error.message;
+        try {
+          const details = await error.context?.json();
+          if (details?.error) message = details.error;
+        } catch {
+          // Pas de corps JSON : la fonction n'est probablement pas déployée
+          message = 'La fonction create-user est introuvable ou inaccessible. Déployez-la dans Supabase (Edge Functions).';
+        }
+        throw new Error(message);
+      }
+
+      setProfiles((prev) => [...prev, data.profile]);
+      return { success: true, data: data.profile };
+    } catch (err) {
+      console.error('Erreur création utilisateur:', err.message);
+      return { success: false, error: err.message };
+    }
+  };
+
   const nameOf = (id) => {
     if (!id) return null;
     const profile = profiles.find((p) => p.id === id);
     return profile ? profile.full_name || profile.email : null;
   };
 
-  return { profiles, loading, fetchProfiles, updateProfile, nameOf };
+  return { profiles, loading, fetchProfiles, updateProfile, createUser, nameOf };
 }

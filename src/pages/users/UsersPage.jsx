@@ -4,7 +4,10 @@ import {
   Edit2,
   RefreshCw,
   AlertTriangle,
-  Info
+  Info,
+  UserPlus,
+  KeyRound,
+  Copy
 } from 'lucide-react';
 import { useProfiles } from '../../hooks/useProfiles';
 import { useAuth, ROLE_LABELS } from '../../context/AuthContext';
@@ -17,9 +20,76 @@ const ROLE_COLORS = {
   seller: 'bg-gray-100 text-gray-800',
 };
 
+const ROLE_DESCRIPTIONS = {
+  admin: 'Accès complet : statistiques, prix d\'achat, réapprovisionnements, gestion du stock et des utilisateurs.',
+  seller: 'Caisse, clients, crédits, SAV et historique des ventes. Pas d\'accès aux prix d\'achat ni aux statistiques.',
+};
+
+const emptyCreateForm = { fullName: '', email: '', password: '', role: 'seller' };
+
+// Mot de passe lisible de 10 caractères (sans 0/O, 1/l/I pour éviter les confusions)
+function generatePassword() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  const values = crypto.getRandomValues(new Uint32Array(10));
+  return Array.from(values, (v) => chars[v % chars.length]).join('');
+}
+
 export default function UsersPage() {
-  const { profiles, loading, fetchProfiles, updateProfile } = useProfiles();
+  const { profiles, loading, fetchProfiles, updateProfile, createUser } = useProfiles();
   const { user, profilesMissing, refreshProfile } = useAuth();
+
+  // Création de compte
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState(emptyCreateForm);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const [createdAccount, setCreatedAccount] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleOpenCreate = () => {
+    setCreateForm({ ...emptyCreateForm, password: generatePassword() });
+    setCreateError('');
+    setCreatedAccount(null);
+    setCopied(false);
+    setIsCreateOpen(true);
+  };
+
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    setCreateError('');
+
+    const email = createForm.email.trim().toLowerCase();
+    if (profiles.some((p) => p.email?.toLowerCase() === email)) {
+      setCreateError('Un compte existe déjà avec cet email.');
+      return;
+    }
+
+    setCreating(true);
+    const result = await createUser({ ...createForm, email, fullName: createForm.fullName.trim() });
+    setCreating(false);
+
+    if (result.success) {
+      setCreatedAccount({
+        name: result.data.full_name || email,
+        email,
+        password: createForm.password,
+        role: result.data.role,
+      });
+    } else {
+      setCreateError(result.error);
+    }
+  };
+
+  const handleCopyCredentials = async () => {
+    const text = `Connexion ShopManager\nEmail : ${createdAccount.email}\nMot de passe : ${createdAccount.password}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      alert(text);
+    }
+  };
 
   const [editingProfile, setEditingProfile] = useState(null);
   const [formData, setFormData] = useState({ full_name: '', role: 'seller' });
@@ -78,13 +148,19 @@ export default function UsersPage() {
           <h1 className="text-2xl font-bold text-gray-900">Utilisateurs</h1>
           <p className="text-sm text-gray-500">Noms et rôles des personnes qui utilisent la boutique.</p>
         </div>
-        <button
-          onClick={fetchProfiles}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl text-sm font-medium transition-colors shadow-sm self-start sm:self-auto"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Actualiser
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchProfiles}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl text-sm font-medium transition-colors shadow-sm"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Actualiser
+          </button>
+          <Button onClick={handleOpenCreate} disabled={profilesMissing}>
+            <UserPlus className="w-4 h-4" />
+            Ajouter un utilisateur
+          </Button>
+        </div>
       </div>
 
       {profilesMissing && (
@@ -100,8 +176,8 @@ export default function UsersPage() {
       <div className="flex items-start gap-2 p-3 bg-indigo-50 border border-indigo-100 text-indigo-900 text-sm rounded-lg">
         <Info className="w-4 h-4 shrink-0 mt-0.5" />
         <span>
-          Pour ajouter un utilisateur : Supabase → Authentication → Users → Add user (email et mot de passe).
-          Il apparaîtra ici comme vendeur, et vous pourrez changer son nom et son rôle.
+          « Ajouter un utilisateur » crée le compte avec un mot de passe que vous lui transmettez.
+          Le compte peut se connecter immédiatement, sans confirmation par email.
         </span>
       </div>
 
@@ -171,6 +247,104 @@ export default function UsersPage() {
         </div>
       </div>
 
+      {/* MODALE : AJOUTER UN UTILISATEUR */}
+      <Modal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        title={createdAccount ? 'Compte créé' : 'Ajouter un utilisateur'}
+      >
+        {createdAccount ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-emerald-700 text-sm font-medium">
+              <CheckCircle2 className="w-5 h-5" />
+              {createdAccount.name} peut maintenant se connecter.
+            </div>
+            <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm space-y-1 font-mono">
+              <p>Email : {createdAccount.email}</p>
+              <p>Mot de passe : {createdAccount.password}</p>
+              <p className="font-sans text-xs text-gray-500">Rôle : {ROLE_LABELS[createdAccount.role]}</p>
+            </div>
+            <p className="text-xs text-amber-700">
+              Notez ou transmettez ces identifiants maintenant : le mot de passe ne sera plus affiché.
+            </p>
+            <div className="flex gap-3">
+              <Button variant="secondary" onClick={handleCopyCredentials} className="w-1/2">
+                <Copy className="w-4 h-4" />
+                {copied ? 'Copié !' : 'Copier'}
+              </Button>
+              <Button onClick={() => setIsCreateOpen(false)} className="w-1/2">
+                Terminé
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleCreateSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nom affiché</label>
+              <input
+                type="text"
+                required
+                placeholder="Ex: Moussa"
+                value={createForm.fullName}
+                onChange={(e) => setCreateForm({ ...createForm, fullName: e.target.value })}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email (identifiant de connexion)</label>
+              <input
+                type="email"
+                required
+                autoComplete="off"
+                placeholder="moussa@boutique.com"
+                value={createForm.email}
+                onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe (8 caractères minimum)</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                  value={createForm.password}
+                  onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                  className="flex-1 px-3 py-2 text-sm font-mono border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setCreateForm({ ...createForm, password: generatePassword() })}
+                >
+                  <KeyRound className="w-4 h-4" />
+                  Générer
+                </Button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Rôle</label>
+              <select
+                value={createForm.role}
+                onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+              >
+                <option value="seller">{ROLE_LABELS.seller}</option>
+                <option value="admin">{ROLE_LABELS.admin}</option>
+              </select>
+              <p className="mt-1.5 text-xs text-gray-500">{ROLE_DESCRIPTIONS[createForm.role]}</p>
+            </div>
+            {createError && <p className="text-xs text-red-600">{createError}</p>}
+            <Button type="submit" isLoading={creating} className="w-full py-2.5">
+              <UserPlus className="w-4 h-4" />
+              Créer le compte
+            </Button>
+          </form>
+        )}
+      </Modal>
+
       {/* MODALE : MODIFIER UN UTILISATEUR */}
       <Modal
         isOpen={!!editingProfile}
@@ -198,11 +372,7 @@ export default function UsersPage() {
               <option value="seller">{ROLE_LABELS.seller}</option>
               <option value="admin">{ROLE_LABELS.admin}</option>
             </select>
-            <p className="mt-1.5 text-xs text-gray-500">
-              {formData.role === 'admin'
-                ? 'Accès complet : statistiques, prix d\'achat, réapprovisionnements, gestion du stock et des utilisateurs.'
-                : 'Caisse, clients, crédits, SAV et historique des ventes. Pas d\'accès aux prix d\'achat ni aux statistiques.'}
-            </p>
+            <p className="mt-1.5 text-xs text-gray-500">{ROLE_DESCRIPTIONS[formData.role]}</p>
           </div>
           <Button type="submit" isLoading={saving} className="w-full py-2.5">
             Enregistrer
