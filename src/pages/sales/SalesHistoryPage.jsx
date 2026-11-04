@@ -17,6 +17,7 @@ import { generateWarrantyPdf } from '../../components/pdf/WarrantyPdf';
 import Button from '../../components/common/Button';
 import { supabase } from '../../config/supabaseClient';
 import { formatCurrency, formatPaymentMethod } from '../../utils/formatters';
+import { useProfiles } from '../../hooks/useProfiles';
 import Badge from '../../components/common/Badge';
 import Modal from '../../components/common/Modal';
 
@@ -25,6 +26,7 @@ export default function SalesHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSale, setSelectedSale] = useState(null);
+  const { nameOf } = useProfiles();
 
   // Charger les ventes et les données associées de façon robuste
   const fetchSales = async () => {
@@ -164,6 +166,7 @@ export default function SalesHistoryPage() {
                 <th className="px-6 py-3">Réf Vente</th>
                 <th className="px-6 py-3">Date & Heure</th>
                 <th className="px-6 py-3">Client</th>
+                <th className="px-6 py-3">Vendeur</th>
                 <th className="px-6 py-3">Paiement</th>
                 <th className="px-6 py-3">Réduction</th>
                 <th className="px-6 py-3">Montant Total</th>
@@ -173,13 +176,13 @@ export default function SalesHistoryPage() {
             <tbody className="divide-y divide-gray-100 text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-8 text-center text-gray-400">
+                  <td colSpan="8" className="px-6 py-8 text-center text-gray-400">
                     Chargement de l'historique...
                   </td>
                 </tr>
               ) : filteredSales.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-8 text-center text-gray-400">
+                  <td colSpan="8" className="px-6 py-8 text-center text-gray-400">
                     Aucune vente enregistrée pour le moment.
                   </td>
                 </tr>
@@ -204,6 +207,9 @@ export default function SalesHistoryPage() {
                       ) : (
                         <span className="text-gray-400 italic text-xs">Client anonyme</span>
                       )}
+                    </td>
+                    <td className="px-6 py-4 text-gray-600 text-xs">
+                      {nameOf(sale.seller_id) || '-'}
                     </td>
                     <td className="px-6 py-4">
                       <Badge colorClass="bg-gray-100 text-gray-800 capitalize">
@@ -257,6 +263,7 @@ export default function SalesHistoryPage() {
                 </span>
               </p>
               <p><strong>Mode de paiement :</strong> <span>{formatPaymentMethod(selectedSale.payment_method)}</span></p>
+              <p><strong>Vendeur :</strong> {nameOf(selectedSale.seller_id) || 'Non renseigné'}</p>
             </div>
 
             <h4 className="font-bold text-sm text-gray-900 border-b border-gray-100 pb-2">Articles achetés</h4>

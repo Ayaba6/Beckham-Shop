@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { decrementStock } from '../../hooks/useSales';
 import { addCreditPayment } from '../../hooks/useCredits';
+import { useProfiles } from '../../hooks/useProfiles';
 import { POS_PAYMENT_METHODS, REPAYMENT_METHODS } from '../../utils/constants';
 import { generateInvoicePdf } from '../../components/pdf/InvoicePdf';
 import { useProducts } from '../../hooks/useProducts';
@@ -36,6 +37,7 @@ const emptySessionSummary = {
 export default function PosPage() {
   const { products, loading: productsLoading, refreshProducts } = useProducts();
   const { currentSession, loading: sessionLoading, openRegister, closeRegister } = useCashRegister();
+  const { nameOf } = useProfiles();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState([]);
@@ -515,6 +517,12 @@ export default function PosPage() {
                 <p className="font-bold text-sm text-gray-900 mb-2">Résumé de la journée du {new Date(selectedClosedSession.opened_at).toLocaleDateString('fr-FR')}</p>
                 <div className="flex justify-between"><span>Ouverture :</span> <span className="font-medium">{new Date(selectedClosedSession.opened_at).toLocaleTimeString('fr-FR')}</span></div>
                 <div className="flex justify-between"><span>Fermeture :</span> <span className="font-medium">{selectedClosedSession.closed_at ? new Date(selectedClosedSession.closed_at).toLocaleTimeString('fr-FR') : '-'}</span></div>
+                {(selectedClosedSession.opened_by || selectedClosedSession.closed_by) && (
+                  <>
+                    <div className="flex justify-between"><span>Ouverte par :</span> <span className="font-medium">{nameOf(selectedClosedSession.opened_by) || '-'}</span></div>
+                    <div className="flex justify-between"><span>Fermée par :</span> <span className="font-medium">{nameOf(selectedClosedSession.closed_by) || '-'}</span></div>
+                  </>
+                )}
                 <div className="flex justify-between"><span>Fond initial :</span> <span className="font-medium">{formatCurrency(selectedClosedSession.opening_balance)}</span></div>
                 <div className="flex justify-between"><span>Ventes totales :</span> <span className="font-medium text-emerald-600">{formatCurrency(selectedClosedSession.total_sales_amount)}</span></div>
                 <div className="flex justify-between"><span>Attendu en caisse :</span> <span className="font-medium">{formatCurrency(selectedClosedSession.expected_balance)}</span></div>
@@ -532,7 +540,10 @@ export default function PosPage() {
                         <div>
                           <span className="font-semibold text-gray-900">{sale.customers?.full_name || 'Client de passage'}</span>
                           {sale.customers?.phone && <span className="text-gray-500 ml-2">({sale.customers.phone})</span>}
-                          <div className="text-[11px] text-gray-400">{new Date(sale.created_at).toLocaleTimeString('fr-FR')} - Paiement : <span className="capitalize font-medium">{sale.payment_method}</span></div>
+                          <div className="text-[11px] text-gray-400">
+                            {new Date(sale.created_at).toLocaleTimeString('fr-FR')} - Paiement : <span className="font-medium">{formatPaymentMethod(sale.payment_method)}</span>
+                            {nameOf(sale.seller_id) && <> - Vendeur : <span className="font-medium">{nameOf(sale.seller_id)}</span></>}
+                          </div>
                         </div>
                         <span className="font-bold text-indigo-600 text-sm">{formatCurrency(sale.total_amount)}</span>
                       </div>

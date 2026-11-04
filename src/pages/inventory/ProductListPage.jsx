@@ -9,6 +9,7 @@ import {
   PackagePlus
 } from 'lucide-react';
 import RestockModal from '../../components/inventory/RestockModal';
+import { useAuth } from '../../context/AuthContext';
 import { useProducts } from '../../hooks/useProducts';
 import { formatCurrency } from '../../utils/formatters';
 import Button from '../../components/common/Button';
@@ -17,6 +18,8 @@ import Badge from '../../components/common/Badge';
 
 export default function ProductListPage() {
   const { products, categories, loading, refreshProducts, addProduct, updateProduct } = useProducts();
+  const { isAdmin } = useAuth();
+  const columnCount = isAdmin ? 7 : 5;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -121,10 +124,12 @@ export default function ProductListPage() {
           <h1 className="text-2xl font-bold text-gray-900">Gestion des Stocks d'Accessoires</h1>
           <p className="text-sm text-gray-500">Suivi des quantités globales, coques, chargeurs et autres articles.</p>
         </div>
-        <Button onClick={handleOpenAdd}>
-          <Plus className="w-4 h-4" />
-          Nouvel Accessoire
-        </Button>
+        {isAdmin && (
+          <Button onClick={handleOpenAdd}>
+            <Plus className="w-4 h-4" />
+            Nouvel Accessoire
+          </Button>
+        )}
       </div>
 
       <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
@@ -145,23 +150,23 @@ export default function ProductListPage() {
               <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 <th className="px-6 py-3">Désignation</th>
                 <th className="px-6 py-3">Catégorie</th>
-                <th className="px-6 py-3">Prix d'Achat</th>
+                {isAdmin && <th className="px-6 py-3">Prix d'Achat</th>}
                 <th className="px-6 py-3">Prix de Vente</th>
                 <th className="px-6 py-3">Quantité en Stock</th>
                 <th className="px-6 py-3 text-center">Statut</th>
-                <th className="px-6 py-3 text-right">Actions</th>
+                {isAdmin && <th className="px-6 py-3 text-right">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-8 text-center text-gray-400">
+                  <td colSpan={columnCount} className="px-6 py-8 text-center text-gray-400">
                     Chargement des accessoires...
                   </td>
                 </tr>
               ) : filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-8 text-center text-gray-400">
+                  <td colSpan={columnCount} className="px-6 py-8 text-center text-gray-400">
                     Aucun accessoire trouvé.
                   </td>
                 </tr>
@@ -177,7 +182,7 @@ export default function ProductListPage() {
                       <td className="px-6 py-4 text-gray-600">
                         {product.categories?.name || 'Accessoires'}
                       </td>
-                      <td className="px-6 py-4 text-gray-500">{formatCurrency(product.purchase_price)}</td>
+                      {isAdmin && <td className="px-6 py-4 text-gray-500">{formatCurrency(product.purchase_price)}</td>}
                       <td className="px-6 py-4 font-bold text-gray-900">{formatCurrency(product.selling_price)}</td>
                       <td className="px-6 py-4 font-bold text-gray-800">
                         {product.stock_quantity} unités
@@ -193,7 +198,7 @@ export default function ProductListPage() {
                           </Badge>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      {isAdmin && <td className="px-6 py-4 text-right">
                         <div className="inline-flex items-center gap-2">
                           <button
                             type="button"
@@ -212,7 +217,7 @@ export default function ProductListPage() {
                             Modifier
                           </button>
                         </div>
-                      </td>
+                      </td>}
                     </tr>
                   );
                 })

@@ -14,6 +14,8 @@ import RepairsPage from '../pages/sav/RepairsPage';
 import SalesHistoryPage from '../pages/sales/SalesHistoryPage';
 import ClientsPage from '../pages/clients/ClientsPage';
 import CreditsPage from '../pages/credits/CreditsPage';
+import StatsPage from '../pages/stats/StatsPage';
+import UsersPage from '../pages/users/UsersPage';
 
 // Redirige vers /login si aucun utilisateur n'est connecté
 function ProtectedRoute({ children }) {
@@ -31,6 +33,12 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+// Réservé aux administrateurs : les vendeurs sont renvoyés au tableau de bord
+function AdminRoute({ children }) {
+  const { isAdmin } = useAuth();
+  return isAdmin ? children : <Navigate to="/dashboard" replace />;
+}
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -46,12 +54,14 @@ export default function AppRoutes() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/pos" element={<PosPage />} />
         <Route path="/inventory" element={<ProductListPage />} />
-        <Route path="/restocks" element={<StockEntriesPage />} />
-        <Route path="/phones" element={<ImeiManagerPage />} />
+        <Route path="/restocks" element={<AdminRoute><StockEntriesPage /></AdminRoute>} />
+        <Route path="/phones" element={<AdminRoute><ImeiManagerPage /></AdminRoute>} />
         <Route path="/sav" element={<RepairsPage />} />
         <Route path="/sales" element={<SalesHistoryPage />} />
         <Route path="/clients" element={<ClientsPage />} />
         <Route path="/credits" element={<CreditsPage />} />
+        <Route path="/stats" element={<AdminRoute><StatsPage /></AdminRoute>} />
+        <Route path="/users" element={<AdminRoute><UsersPage /></AdminRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

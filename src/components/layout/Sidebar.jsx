@@ -1,34 +1,39 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  ShoppingCart, 
-  Package, 
-  Wrench, 
-  Receipt, 
-  Users, 
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  Package,
+  Wrench,
+  Receipt,
+  Users,
   Smartphone,
   LogOut,
   HandCoins,
-  PackagePlus
+  PackagePlus,
+  BarChart3,
+  UserCog
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, ROLE_LABELS } from '../../context/AuthContext';
 
+// adminOnly : visible uniquement par les administrateurs
 const navigation = [
   { name: 'Tableau de bord', to: '/dashboard', icon: LayoutDashboard },
   { name: 'Caisse (POS)', to: '/pos', icon: ShoppingCart },
   { name: 'Stock Accessoires', to: '/inventory', icon: Package },
-  { name: 'Réapprovisionnements', to: '/restocks', icon: PackagePlus },
-  { name: 'Téléphones & IMEI', to: '/phones', icon: Smartphone },
+  { name: 'Réapprovisionnements', to: '/restocks', icon: PackagePlus, adminOnly: true },
+  { name: 'Téléphones & IMEI', to: '/phones', icon: Smartphone, adminOnly: true },
   { name: 'S.A.V & Réparations', to: '/sav', icon: Wrench },
   { name: 'Historique Ventes', to: '/sales', icon: Receipt },
+  { name: 'Statistiques', to: '/stats', icon: BarChart3, adminOnly: true },
   { name: 'Clients', to: '/clients', icon: Users },
   { name: 'Crédits Clients', to: '/credits', icon: HandCoins },
+  { name: 'Utilisateurs', to: '/users', icon: UserCog, adminOnly: true },
 ];
 
 export default function Sidebar() {
-  const { user, signOut } = useAuth();
-  const email = user?.email || 'Utilisateur';
+  const { displayName, role, isAdmin, signOut } = useAuth();
+  const visibleNavigation = navigation.filter((item) => !item.adminOnly || isAdmin);
 
   return (
     <aside className="w-64 bg-slate-900 text-slate-100 flex flex-col h-screen sticky top-0 border-r border-slate-800">
@@ -45,7 +50,7 @@ export default function Sidebar() {
 
       {/* Navigation Links */}
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {navigation.map((item) => {
+        {visibleNavigation.map((item) => {
           const Icon = item.icon;
           return (
             <NavLink
@@ -70,11 +75,11 @@ export default function Sidebar() {
       <div className="p-4 border-t border-slate-800">
         <div className="flex items-center gap-3 px-2 py-1.5">
           <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center font-bold text-slate-200">
-            {email.charAt(0).toUpperCase()}
+            {displayName.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">{email}</p>
-            <p className="text-xs text-slate-400 truncate">Vendeur</p>
+            <p className="text-sm font-medium text-white truncate">{displayName}</p>
+            <p className="text-xs text-slate-400 truncate">{ROLE_LABELS[role] || role}</p>
           </div>
           <button
             onClick={signOut}
