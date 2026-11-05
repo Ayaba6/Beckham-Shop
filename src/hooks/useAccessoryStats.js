@@ -18,14 +18,15 @@ export function useAccessoryStats() {
 
       let query = supabase
         .from('sales')
-        .select('id, created_at, total_amount, discount_amount, sale_items (product_id, quantity, unit_price, subtotal)')
+        .select('*, sale_items (product_id, quantity, unit_price, subtotal)')
         .order('created_at', { ascending: true });
       if (startDate) query = query.gte('created_at', startDate.toISOString());
       if (endDate) query = query.lte('created_at', endDate.toISOString());
 
       const { data, error: salesError } = await query;
       if (salesError) throw salesError;
-      setSales(data || []);
+      // Les dettes libres (reprises de crédits anciens) ne sont pas des ventes de la période
+      setSales((data || []).filter((sale) => sale.sale_type !== 'debt'));
     } catch (err) {
       setError(err.message);
       console.error('Erreur chargement statistiques:', err.message);

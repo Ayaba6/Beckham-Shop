@@ -14,8 +14,7 @@ import {
   ArrowLeft,
   FileDown
 } from 'lucide-react';
-import { decrementStock } from '../../hooks/useSales';
-import { addCreditPayment } from '../../hooks/useCredits';
+import { recordSale } from '../../hooks/useSales';
 import { useProfiles } from '../../hooks/useProfiles';
 import { POS_PAYMENT_METHODS, REPAYMENT_METHODS } from '../../utils/constants';
 import { generateInvoicePdf } from '../../components/pdf/InvoicePdf';
@@ -297,131 +296,31 @@ export default function PosPage() {
 
     setLoadingCheckout(true);
     try {
-      // 1. Revérifier le stock réel en base (un autre poste a pu vendre entre-temps)
-      const { data: freshStock, error: stockErr } = await supabase
-        .from('products')
-        .select('id, name, stock_quantity')
-        .in('id', cart.map((item) => item.id));
-
-      if (stockErr) throw stockErr;
-
-      const shortages = cart.filter((item) => {
-        const fresh = freshStock.find((p) => p.id === item.id);
-        return !fresh || fresh.stock_quantity < item.quantity;
-      });
-
-      if (shortages.length > 0) {
-        const details = shortages
-          .map((item) => {
-            const fresh = freshStock.find((p) => p.id === item.id);
-            return `- ${item.name} : ${fresh ? fresh.stock_quantity : 0} disponible(s), ${item.quantity} demandé(s)`;
-          })
-          .join('\n');
-        alert('Stock insuffisant, la vente n\'a pas été enregistrée :\n' + details);
-        refreshProducts();
-        return;
-      }
-
-      // 2. Retrouver ou créer le client
-      let customerId = null;
-      if (customerPhone) {
-        const { data: existingCust } = await supabase
-          .from('customers')
-          .select('id')
-          .eq('phone', customerPhone)
-          .maybeSingle();
-
-        if (existingCust) {
-          customerId = existingCust.id;
-        } else if (customerName) {
-          const { data: newCust, error: custErr } = await supabase
-            .from('customers')
-            .insert([{ full_name: customerName, phone: customerPhone }])
-            .select()
-            .single();
-          if (!custErr && newCust) customerId = newCust.id;
-        }
-      }
-
-      if (isCredit && !customerId) {
-        alert('Client introuvable : saisissez aussi son nom pour l\'enregistrer avant une vente à crédit.');
-        return;
-      }
-
-      const { data: saleData, error: saleErr } = await supabase
-        .from('sales')
-        .insert([{
-          customer_id: customerId,
-          total_amount: totalCartAmount,
-          discount_amount: discountVal,
-          payment_method: paymentMethod,
-          status: 'completed'
-        }])
-        .select()
-        .single();
-
-      if (saleErr) throw saleErr;
-
-      // 3. Enregistrer toutes les lignes en une seule requête ; en cas d'échec, annuler la vente
-      const saleItems = cart.map((item) => ({
-        sale_id: saleData.id,
-        product_id: item.id,
-        quantity: item.quantity,
-        unit_price: item.selling_price,
-        subtotal: item.selling_price * item.quantity
-      }));
-
-      const { error: itemsErr } = await supabase.from('sale_items').insert(saleItems);
-      if (itemsErr) {
-        await supabase.from('sales').delete().eq('id', saleData.id);
-        throw itemsErr;
-      }
-
-      // 4. Décrémenter le stock de façon sûre
-      const stockFailures = [];
-      for (const item of cart) {
-        const res = await decrementStock(item.id, item.quantity);
-        if (!res.success) stockFailures.push(`- ${item.name} : ${res.error}`);
-      }
-      if (stockFailures.length > 0) {
-        alert(
-          'Vente enregistrée, mais le stock de certains articles n\'a pas pu être mis à jour. ' +
-          'Corrigez-le depuis la page Stock :\n' + stockFailures.join('\n')
-        );
-      }
-
-      // 5. Enregistrer l'acompte d'une vente à crédit
-      let depositSaved = 0;
-      if (depositVal > 0) {
-        const res = await addCreditPayment({
-          saleId: saleData.id,
-          customerId,
-          amount: depositVal,
-          paymentMethod: creditDepositMethod,
-          notes: 'Acompte',
-        });
-        if (res.success) {
-          depositSaved = depositVal;
-        } else {
-          alert('Vente enregistrée, mais l\'acompte n\'a pas pu l\'être : ' + res.error + '\nAjoutez-le depuis la page Crédits.');
-        }
-      }
-
-      // 6. Garder la vente pour proposer la facture
-      setLastSale({
-        ...saleData,
-        remaining: isCredit ? totalCartAmount - depositSaved : 0,
-        customers: customerPhone || customerName
-          ? { full_name: customerName || null, phone: customerPhone || null }
-          : null,
-        sale_items: cart.map((item, index) => ({
-          id: index,
+      const result = await recordSale({
+        items: cart.map((item) => ({
+          productId: item.id,
+          name: item.name,
+          brand: item.brand,
           quantity: item.quantity,
-          unit_price: item.selling_price,
-          subtotal: item.selling_price * item.quantity,
-          products: { name: item.name, brand: item.brand }
-        }))
+          unitPrice: item.selling_price,
+        })),
+        customerPhone,
+        customerName,
+        paymentMethod,
+        discountAmount: discountVal,
+        deposit: depositVal,
+        depositMethod: creditDepositMethod,
       });
+
+      if (!result.success) {
+        alert(result.error);
+        if (result.shortages) refreshProducts();
+        return;
+      }
+      result.warnings.forEach((warning) => alert(warning));
+
+      // Garder la vente pour proposer la facture
+      setLastSale({ ...result.sale, remaining: result.remaining });
 
       setCart([]);
       setCustomerPhone('');

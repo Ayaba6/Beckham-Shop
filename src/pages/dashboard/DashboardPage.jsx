@@ -103,7 +103,7 @@ export default function DashboardPage() {
       todayStart.setHours(0, 0, 0, 0);
 
       const todaySales = salesData?.filter(
-        (sale) => new Date(sale.created_at) >= todayStart
+        (sale) => new Date(sale.created_at) >= todayStart && sale.sale_type !== 'debt'
       ) || [];
       
       const revenueToday = todaySales.reduce((acc, sale) => acc + Number(sale.total_amount), 0);
