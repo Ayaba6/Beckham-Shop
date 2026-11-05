@@ -6,4 +6,13 @@
   body {
     @apply bg-gray-100 text-gray-900 font-sans antialiased;
   }
+
+  /* Petits écrans : cellules de tableau plus serrées (les tableaux défilent horizontalement) */
+  @media (max-width: 767px) {
+    th,
+    td {
+      padding-left: 0.75rem !important;
+      padding-right: 0.75rem !important;
+    }
+  }
 }

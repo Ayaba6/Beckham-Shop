@@ -192,7 +192,7 @@ export default function ClientsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Gestion des Clients</h1>
           <p className="text-sm text-gray-500">Répertoire des clients, historique d'achats et de réparations.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={fetchCustomers}
             className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl text-sm font-medium transition-colors shadow-sm"
@@ -221,7 +221,44 @@ export default function ClientsPage() {
 
       {/* TABLEAU CLIENTS */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile : une carte par client */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {loading ? (
+            <p className="px-4 py-8 text-center text-sm text-gray-400">Chargement des clients...</p>
+          ) : filteredCustomers.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-gray-400">Aucun client trouvé.</p>
+          ) : (
+            filteredCustomers.map((customer) => (
+              <div key={customer.id} className="px-4 py-3 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleOpenHistory(customer)}
+                  className="flex-1 min-w-0 flex items-center gap-3 text-left"
+                >
+                  <div className="w-9 h-9 shrink-0 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
+                    {(customer.full_name || '?').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900 truncate">{customer.full_name || 'Sans nom'}</p>
+                    <p className="text-xs text-gray-400">
+                      {customer.phone || '-'} · {customer.salesCount} vente(s) · {formatCurrency(customer.salesTotal)}
+                    </p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenEdit(customer)}
+                  className="p-2 text-gray-500 bg-gray-100 rounded-lg shrink-0"
+                  aria-label="Modifier le client"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">

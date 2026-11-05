@@ -12,7 +12,8 @@ import {
   HandCoins,
   PackagePlus,
   BarChart3,
-  UserCog
+  UserCog,
+  X
 } from 'lucide-react';
 import { useAuth, ROLE_LABELS } from '../../context/AuthContext';
 
@@ -31,21 +32,38 @@ const navigation = [
   { name: 'Utilisateurs', to: '/users', icon: UserCog, adminOnly: true },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen = false, onClose }) {
   const { displayName, role, isAdmin, signOut } = useAuth();
   const visibleNavigation = navigation.filter((item) => !item.adminOnly || isAdmin);
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-100 flex flex-col h-screen sticky top-0 border-r border-slate-800">
+    <>
+      {/* Fond sombre derrière le tiroir (mobile) */}
+      {isOpen && (
+        <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={onClose} aria-hidden="true" />
+      )}
+
+    <aside
+      className={`fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 text-slate-100 flex flex-col h-screen border-r border-slate-800 transform transition-transform duration-200 lg:sticky lg:top-0 lg:translate-x-0 ${
+        isOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}
+    >
       {/* Brand Header */}
       <div className="p-5 flex items-center gap-3 border-b border-slate-800">
         <div className="bg-indigo-600 p-2 rounded-lg text-white">
           <Smartphone className="w-6 h-6" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="font-bold text-lg leading-tight">ShopManager</h1>
           <p className="text-xs text-slate-400">Accessoires & Caisse</p>
         </div>
+        <button
+          onClick={onClose}
+          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg lg:hidden"
+          aria-label="Fermer le menu"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Navigation Links */}
@@ -91,5 +109,6 @@ export default function Sidebar() {
         </div>
       </div>
     </aside>
+    </>
   );
 }

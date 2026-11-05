@@ -233,7 +233,57 @@ export default function CreditsPage() {
 
       {/* TABLEAU */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile : une carte par crédit, touchée pour encaisser */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {loading ? (
+            <p className="px-4 py-8 text-center text-sm text-gray-400">Chargement des crédits...</p>
+          ) : visibleCredits.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-gray-400">
+              {onlyOverdue ? 'Aucun crédit en retard.' : showSettled ? 'Aucune vente à crédit.' : 'Aucun crédit en cours.'}
+            </p>
+          ) : (
+            visibleCredits.map((credit) => (
+              <button
+                key={credit.id}
+                type="button"
+                onClick={() => handleOpenCredit(credit)}
+                className={`w-full text-left px-4 py-3 space-y-1.5 ${credit.isOverdue ? 'bg-red-50/60' : 'active:bg-gray-50'}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900 truncate">{credit.customers?.full_name || 'Client inconnu'}</p>
+                    <p className="text-xs text-gray-400">
+                      {credit.customers?.phone || '-'} · {formatDate(credit.created_at)}
+                    </p>
+                  </div>
+                  {credit.remaining > 0 ? (
+                    <span className="font-bold text-orange-600 shrink-0">{formatCurrency(credit.remaining)}</span>
+                  ) : (
+                    <Badge colorClass="bg-emerald-100 text-emerald-800 shrink-0">Soldé</Badge>
+                  )}
+                </div>
+                {credit.sale_type === 'debt' && (
+                  <p className="text-xs text-gray-500 italic">Dette : {credit.notes || 'sans motif'}</p>
+                )}
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+                  <span>
+                    Total {formatCurrency(credit.total_amount)} · payé {formatCurrency(credit.paid)}
+                  </span>
+                  {credit.due_date &&
+                    (credit.isOverdue ? (
+                      <Badge colorClass="bg-red-100 text-red-700">
+                        <AlertTriangle className="w-3 h-3 mr-1" /> {credit.daysOverdue} j de retard
+                      </Badge>
+                    ) : (
+                      <span>Échéance {formatDueDate(credit.due_date)}</span>
+                    ))}
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">

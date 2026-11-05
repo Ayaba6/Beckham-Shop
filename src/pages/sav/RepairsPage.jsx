@@ -106,6 +106,22 @@ export default function RepairsPage() {
     }
   };
 
+  // Certificat de garantie d'une réparation terminée
+  const handleWarranty = (repair) =>
+    generateWarrantyPdf({
+      type: 'repair',
+      reference: `SAV-${repair.id.slice(0, 8).toUpperCase()}`,
+      date: repair.repaired_at || repair.received_at,
+      customerName: repair.customers?.full_name,
+      customerPhone: repair.customers?.phone,
+      deviceName: repair.device_name,
+      imei: repair.imei_or_serial,
+      description: repair.issue_description,
+      amount: repair.estimated_cost,
+    });
+
+  const canIssueWarranty = (repair) => repair.status === 'repaired' || repair.status === 'delivered';
+
   // Obtenir la couleur et le libellé du badge selon le statut
   const getStatusBadge = (status) => {
     switch (status) {
@@ -168,7 +184,61 @@ export default function RepairsPage() {
 
       {/* LISTE DES RÉPARATIONS */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile : une carte par réparation */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {loading ? (
+            <p className="px-4 py-8 text-center text-sm text-gray-400">Chargement des fiches SAV...</p>
+          ) : filteredRepairs.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-gray-400">Aucune fiche SAV enregistrée.</p>
+          ) : (
+            filteredRepairs.map((repair) => (
+              <div key={repair.id} className="px-4 py-3 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900">{repair.device_name}</p>
+                    {repair.imei_or_serial && (
+                      <p className="text-xs font-mono text-indigo-600 break-all">IMEI : {repair.imei_or_serial}</p>
+                    )}
+                  </div>
+                  {getStatusBadge(repair.status)}
+                </div>
+                <p className="text-sm text-gray-600">{repair.issue_description}</p>
+                <div className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-xs text-gray-500">
+                  <span>
+                    {repair.customers?.full_name || 'Client comptoir'}
+                    {repair.customers?.phone ? ` · ${repair.customers.phone}` : ''}
+                  </span>
+                  <span>{formatDate(repair.received_at)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-gray-900 mr-auto">{formatCurrency(repair.estimated_cost)}</span>
+                  {canIssueWarranty(repair) && (
+                    <button
+                      onClick={() => handleWarranty(repair)}
+                      className="p-2 text-emerald-700 bg-emerald-50 rounded-lg"
+                      aria-label="Certificat de garantie"
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                    </button>
+                  )}
+                  <select
+                    value={repair.status}
+                    onChange={(e) => handleStatusChange(repair.id, e.target.value)}
+                    className="text-xs border border-gray-200 rounded-lg px-2 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  >
+                    {REPAIR_STATUSES.map((status) => (
+                      <option key={status.id} value={status.id}>
+                        {status.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -221,21 +291,9 @@ export default function RepairsPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="inline-flex items-center gap-2">
-                        {(repair.status === 'repaired' || repair.status === 'delivered') && (
+                        {canIssueWarranty(repair) && (
                           <button
-                            onClick={() =>
-                              generateWarrantyPdf({
-                                type: 'repair',
-                                reference: `SAV-${repair.id.slice(0, 8).toUpperCase()}`,
-                                date: repair.repaired_at || repair.received_at,
-                                customerName: repair.customers?.full_name,
-                                customerPhone: repair.customers?.phone,
-                                deviceName: repair.device_name,
-                                imei: repair.imei_or_serial,
-                                description: repair.issue_description,
-                                amount: repair.estimated_cost,
-                              })
-                            }
+                            onClick={() => handleWarranty(repair)}
                             title="Certificat de garantie"
                             className="p-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
                           >

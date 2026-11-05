@@ -550,8 +550,27 @@ export default function PosPage() {
   // ==========================================
   // VUE 2 : SI LA CAISSE EST OUVERTE (INTERFACE DE VENTE DE LA JOURNÉE)
   // ==========================================
+  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${cart.length > 0 ? 'pb-20 lg:pb-0' : ''}`}>
+      {/* Mobile : barre fixe en bas pour aller au panier */}
+      {cart.length > 0 && (
+        <div className="lg:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] p-3">
+          <button
+            type="button"
+            onClick={() => document.getElementById('pos-cart')?.scrollIntoView({ behavior: 'smooth' })}
+            className="w-full flex items-center justify-between gap-3 bg-indigo-600 text-white rounded-xl px-4 py-3 font-medium"
+          >
+            <span className="flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5" />
+              Voir le panier ({cartCount})
+            </span>
+            <span className="font-bold">{formatCurrency(totalCartAmount)}</span>
+          </button>
+        </div>
+      )}
+
       {successMsg && (
         <div className="fixed top-20 right-6 z-50 bg-emerald-600 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-bounce">
           <CheckCircle2 className="w-5 h-5" />
@@ -697,12 +716,12 @@ export default function PosPage() {
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="max-h-[550px] overflow-y-auto">
+            <div className="max-h-[60vh] lg:max-h-[550px] overflow-y-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider sticky top-0 z-10 border-b border-gray-200">
                     <th className="px-4 py-3">Accessoire</th>
-                    <th className="px-4 py-3">Catégorie</th>
+                    <th className="px-4 py-3 hidden sm:table-cell">Catégorie</th>
                     <th className="px-4 py-3">Prix de Vente</th>
                     <th className="px-4 py-3">Stock</th>
                     <th className="px-4 py-3 text-right">Action</th>
@@ -732,15 +751,15 @@ export default function PosPage() {
                           <div className="font-semibold text-gray-900">{product.name}</div>
                           {product.brand && <div className="text-xs text-gray-400">{product.brand}</div>}
                         </td>
-                        <td className="px-4 py-3 text-gray-600 text-xs">
+                        <td className="px-4 py-3 text-gray-600 text-xs hidden sm:table-cell">
                           {product.categories?.name || 'Accessoires'}
                         </td>
                         <td className="px-4 py-3 font-bold text-indigo-600">
                           {formatCurrency(product.selling_price)}
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-xs font-semibold px-2 py-1 bg-gray-100 text-gray-800 rounded-md">
-                            {product.stock_quantity} unités
+                          <span className="text-xs font-semibold px-2 py-1 bg-gray-100 text-gray-800 rounded-md whitespace-nowrap">
+                            {product.stock_quantity}<span className="hidden sm:inline"> unités</span>
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -750,10 +769,11 @@ export default function PosPage() {
                               e.stopPropagation();
                               handleAddToCart(product);
                             }}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium transition-colors shadow-sm"
+                            className="inline-flex items-center gap-1 px-3 py-2 sm:py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium transition-colors shadow-sm"
+                            aria-label={`Ajouter ${product.name}`}
                           >
-                            <PlusCircle className="w-3.5 h-3.5" />
-                            Ajouter
+                            <PlusCircle className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                            <span className="hidden sm:inline">Ajouter</span>
                           </button>
                         </td>
                       </tr>
@@ -766,7 +786,7 @@ export default function PosPage() {
         </div>
 
         {/* COLONNE DROITE : PANIER, RÉDUCTION ET PAIEMENT */}
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between h-fit">
+        <div id="pos-cart" className="scroll-mt-20 bg-white p-4 sm:p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between h-fit">
           <div className="space-y-4">
             <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 border-b border-gray-100 pb-3">
               <ShoppingCart className="w-5 h-5 text-indigo-600" />
@@ -786,14 +806,16 @@ export default function PosPage() {
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => handleUpdateQuantity(item.id, -1)}
-                        className="w-6 h-6 bg-white border border-gray-200 rounded flex items-center justify-center text-gray-600 hover:bg-gray-100"
+                        className="w-8 h-8 lg:w-6 lg:h-6 bg-white border border-gray-200 rounded flex items-center justify-center text-gray-600 hover:bg-gray-100"
+                        aria-label="Retirer un"
                       >
                         <Minus className="w-3 h-3" />
                       </button>
                       <span className="text-xs font-bold w-6 text-center">{item.quantity}</span>
                       <button
                         onClick={() => handleUpdateQuantity(item.id, 1)}
-                        className="w-6 h-6 bg-white border border-gray-200 rounded flex items-center justify-center text-gray-600 hover:bg-gray-100"
+                        className="w-8 h-8 lg:w-6 lg:h-6 bg-white border border-gray-200 rounded flex items-center justify-center text-gray-600 hover:bg-gray-100"
+                        aria-label="Ajouter un"
                       >
                         <Plus className="w-3 h-3" />
                       </button>

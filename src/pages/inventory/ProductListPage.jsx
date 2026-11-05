@@ -144,7 +144,66 @@ export default function ProductListPage() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile : une carte par accessoire */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {loading ? (
+            <p className="px-4 py-8 text-center text-sm text-gray-400">Chargement des accessoires...</p>
+          ) : filteredProducts.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-gray-400">Aucun accessoire trouvé.</p>
+          ) : (
+            filteredProducts.map((product) => {
+              const isLowStock = product.stock_quantity <= product.min_stock_alert;
+              return (
+                <div key={product.id} className="px-4 py-3 space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900">{product.name}</p>
+                      <p className="text-xs text-gray-400">
+                        {[product.brand, product.categories?.name || 'Accessoires'].filter(Boolean).join(' · ')}
+                      </p>
+                    </div>
+                    <span className="font-bold text-gray-900 shrink-0">{formatCurrency(product.selling_price)}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-800">{product.stock_quantity} unités</span>
+                      {isLowStock ? (
+                        <Badge colorClass="bg-red-100 text-red-700">
+                          <AlertTriangle className="w-3 h-3 mr-1" /> Stock faible
+                        </Badge>
+                      ) : (
+                        <Badge colorClass="bg-emerald-100 text-emerald-800">En stock</Badge>
+                      )}
+                    </div>
+                    {isAdmin && <span className="text-gray-500">Achat : {formatCurrency(product.purchase_price)}</span>}
+                  </div>
+                  {isAdmin && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setRestockingProduct(product)}
+                        className="inline-flex items-center justify-center gap-1 px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-medium"
+                      >
+                        <PackagePlus className="w-3.5 h-3.5" />
+                        Réappro.
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEdit(product)}
+                        className="inline-flex items-center justify-center gap-1 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-medium"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        Modifier
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider">
