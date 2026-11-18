@@ -3,6 +3,7 @@ import { PackagePlus } from 'lucide-react';
 import { supabase } from '../../config/supabaseClient';
 import { restockProduct } from '../../hooks/useStockEntries';
 import { formatCurrency } from '../../utils/formatters';
+import { useAuth } from '../../context/AuthContext';
 import Button from '../common/Button';
 import Modal from '../common/Modal';
 
@@ -12,6 +13,8 @@ import Modal from '../common/Modal';
  * - `products` : liste proposée quand aucun produit n'est présélectionné
  */
 export default function RestockModal({ isOpen, onClose, product = null, products = [], onSuccess }) {
+  // Seul l'administrateur saisit les prix ; un vendeur enregistre seulement la quantité reçue
+  const { isAdmin } = useAuth();
   const [productId, setProductId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unitCost, setUnitCost] = useState('');
@@ -68,10 +71,10 @@ export default function RestockModal({ isOpen, onClose, product = null, products
     const result = await restockProduct({
       productId: selected.id,
       quantity: qty,
-      unitCost,
+      unitCost: isAdmin ? unitCost : 0,
       supplier,
       notes,
-      updatePrice,
+      updatePrice: isAdmin && updatePrice,
     });
     setSaving(false);
 
@@ -93,7 +96,8 @@ export default function RestockModal({ isOpen, onClose, product = null, products
           <div className="p-3 bg-gray-50 rounded-lg text-sm">
             <p className="font-semibold text-gray-900">{product.name}</p>
             <p className="text-xs text-gray-500">
-              Stock actuel : {product.stock_quantity} unité(s) · Prix d'achat actuel : {formatCurrency(product.purchase_price)}
+              Stock actuel : {product.stock_quantity} unité(s)
+              {isAdmin && ` · Prix d'achat actuel : ${formatCurrency(product.purchase_price)}`}
             </p>
           </div>
         ) : (
@@ -115,7 +119,7 @@ export default function RestockModal({ isOpen, onClose, product = null, products
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className={`grid gap-3 ${isAdmin ? 'grid-cols-2' : 'grid-cols-1'}`}>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Quantité reçue</label>
             <input
@@ -128,17 +132,19 @@ export default function RestockModal({ isOpen, onClose, product = null, products
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Prix d'achat unitaire (FCFA)</label>
-            <input
-              type="number"
-              required
-              min="0"
-              value={unitCost}
-              onChange={(e) => setUnitCost(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
+          {isAdmin && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Prix d'achat unitaire (FCFA)</label>
+              <input
+                type="number"
+                required
+                min="0"
+                value={unitCost}
+                onChange={(e) => setUnitCost(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          )}
         </div>
 
         <div>
@@ -166,7 +172,7 @@ export default function RestockModal({ isOpen, onClose, product = null, products
           className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
 
-        {priceChanged && (
+        {isAdmin && priceChanged && (
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input
               type="checkbox"
@@ -178,10 +184,12 @@ export default function RestockModal({ isOpen, onClose, product = null, products
           </label>
         )}
 
-        <div className="flex justify-between text-sm font-semibold text-gray-900 pt-2 border-t border-gray-100">
-          <span>Coût total de l'entrée :</span>
-          <span className="text-indigo-600">{formatCurrency(totalCost)}</span>
-        </div>
+        {isAdmin && (
+          <div className="flex justify-between text-sm font-semibold text-gray-900 pt-2 border-t border-gray-100">
+            <span>Coût total de l'entrée :</span>
+            <span className="text-indigo-600">{formatCurrency(totalCost)}</span>
+          </div>
+        )}
 
         {errorMsg && <p className="text-xs text-red-600">{errorMsg}</p>}
 

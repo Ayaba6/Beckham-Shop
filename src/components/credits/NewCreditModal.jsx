@@ -76,7 +76,7 @@ export default function NewCreditModal({ isOpen, onClose, onSuccess }) {
   };
 
   // ---------- Articles ----------
-  const accessories = products.filter((p) => !p.is_serialized && p.stock_quantity > 0);
+  const accessories = products.filter((p) => !p.is_serialized && p.stock_quantity > 0 && Number(p.selling_price) > 0);
 
   const handleAddLine = () => {
     const product = accessories.find((p) => p.id === productToAdd);

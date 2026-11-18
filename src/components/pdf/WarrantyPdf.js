@@ -1,12 +1,12 @@
 import { jsPDF } from 'jspdf';
-import { drawShopHeader, pdfAmount, pdfDate } from './InvoicePdf';
+import { drawShopHeader, loadLogo, pdfAmount, pdfDate } from './InvoicePdf';
 
 /**
  * Génère et télécharge un certificat de garantie.
  * - type 'sale'   : garantie d'un téléphone vendu (IMEI)
  * - type 'repair' : garantie d'une réparation SAV
  */
-export function generateWarrantyPdf({
+export async function generateWarrantyPdf({
   type = 'sale',
   reference,
   date,
@@ -18,13 +18,14 @@ export function generateWarrantyPdf({
   amount,
   months = type === 'repair' ? 3 : 6,
 }) {
+  const logo = await loadLogo();
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const startDate = date ? new Date(date) : new Date();
   const endDate = new Date(startDate);
   endDate.setMonth(endDate.getMonth() + months);
 
-  let y = drawShopHeader(doc, 'CERTIFICAT DE GARANTIE', `Réf. ${reference}`);
+  let y = drawShopHeader(doc, 'CERTIFICAT DE GARANTIE', `Réf. ${reference}`, logo);
 
   // Bloc récapitulatif
   const lines = [

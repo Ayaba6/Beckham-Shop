@@ -280,9 +280,10 @@ $$;
 --
 -- Résumé :
 --   Tout utilisateur connecté : lire les produits (sans prix d'achat), vendre,
---     gérer les clients, le SAV, les crédits, ouvrir et fermer la caisse.
---   Administrateur uniquement : prix d'achat, créer/modifier/supprimer des produits
---     et catégories, réapprovisionner, voir les entrées de stock, supprimer des
+--     gérer les clients, le SAV, les crédits, ouvrir et fermer la caisse,
+--     ajouter un accessoire et réceptionner une livraison (réapprovisionner).
+--   Administrateur uniquement : lire les prix d'achat, modifier/supprimer des produits
+--     et catégories, voir l'historique des entrées de stock, supprimer des
 --     ventes, clients, réparations ou paiements.
 
 -- 0. Vérifier que les scripts précédents ont été exécutés ------------------------
@@ -326,6 +327,10 @@ create policy "Écriture admin" on public.categories for all to authenticated
   using (public.is_admin()) with check (public.is_admin());
 
 create policy "Lecture" on public.products for select to authenticated using (true);
+-- Les vendeurs enregistrent les nouveaux accessoires à leur arrivée, sans prix :
+-- seul l'administrateur fixe les prix d'achat et de vente
+create policy "Création" on public.products for insert to authenticated
+  with check (public.is_admin() or (coalesce(purchase_price, 0) = 0 and coalesce(selling_price, 0) = 0));
 create policy "Écriture admin" on public.products for all to authenticated
   using (public.is_admin()) with check (public.is_admin());
 
@@ -438,7 +443,8 @@ begin
 end;
 $$;
 
--- 8. Entrées de stock (coûts d'achat) : administrateurs uniquement --------------
+-- 8. Entrées de stock : historique (coûts d'achat) réservé aux administrateurs,
+--    mais tout utilisateur connecté réceptionne une livraison via restock_product
 do $$
 begin
   if to_regclass('public.stock_entries') is not null then
@@ -461,12 +467,19 @@ begin
       as $body$
       declare
         v_entry public.stock_entries;
+        v_admin boolean := public.is_admin();
       begin
-        if not public.is_admin() then
-          raise exception 'Réservé aux administrateurs';
+        if auth.uid() is null then
+          raise exception 'Non connecté';
         end if;
         if p_quantity is null or p_quantity <= 0 then
           raise exception 'Quantité invalide';
+        end if;
+
+        -- Un vendeur ne fixe pas de prix : l'entrée prend le prix d'achat actuel du produit
+        if not v_admin then
+          select purchase_price into p_unit_cost from public.products where id = p_product_id;
+          p_update_price := false;
         end if;
 
         update public.products

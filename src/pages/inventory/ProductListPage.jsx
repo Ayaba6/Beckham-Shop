@@ -19,7 +19,9 @@ import Badge from '../../components/common/Badge';
 export default function ProductListPage() {
   const { products, categories, loading, refreshProducts, addProduct, updateProduct } = useProducts();
   const { isAdmin } = useAuth();
-  const columnCount = isAdmin ? 7 : 5;
+  const columnCount = isAdmin ? 7 : 6;
+  // Un accessoire ajouté par un vendeur attend que le patron fixe son prix de vente
+  const hasPrice = (product) => Number(product.selling_price) > 0;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -124,12 +126,10 @@ export default function ProductListPage() {
           <h1 className="text-2xl font-bold text-gray-900">Gestion des Stocks d'Accessoires</h1>
           <p className="text-sm text-gray-500">Suivi des quantités globales, coques, chargeurs et autres articles.</p>
         </div>
-        {isAdmin && (
-          <Button onClick={handleOpenAdd}>
-            <Plus className="w-4 h-4" />
-            Nouvel Accessoire
-          </Button>
-        )}
+        <Button onClick={handleOpenAdd}>
+          <Plus className="w-4 h-4" />
+          Nouvel Accessoire
+        </Button>
       </div>
 
       <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
@@ -162,7 +162,11 @@ export default function ProductListPage() {
                         {[product.brand, product.categories?.name || 'Accessoires'].filter(Boolean).join(' · ')}
                       </p>
                     </div>
-                    <span className="font-bold text-gray-900 shrink-0">{formatCurrency(product.selling_price)}</span>
+                    {hasPrice(product) ? (
+                      <span className="font-bold text-gray-900 shrink-0">{formatCurrency(product.selling_price)}</span>
+                    ) : (
+                      <Badge colorClass="bg-amber-100 text-amber-800 shrink-0">Prix à fixer</Badge>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                     <div className="flex items-center gap-2">
@@ -177,26 +181,26 @@ export default function ProductListPage() {
                     </div>
                     {isAdmin && <span className="text-gray-500">Achat : {formatCurrency(product.purchase_price)}</span>}
                   </div>
-                  {isAdmin && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setRestockingProduct(product)}
-                        className="inline-flex items-center justify-center gap-1 px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-medium"
-                      >
-                        <PackagePlus className="w-3.5 h-3.5" />
-                        Réappro.
-                      </button>
+                  <div className={`grid gap-2 ${isAdmin ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                    <button
+                      type="button"
+                      onClick={() => setRestockingProduct(product)}
+                      className="inline-flex items-center justify-center gap-1 px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-medium"
+                    >
+                      <PackagePlus className="w-3.5 h-3.5" />
+                      Réappro.
+                    </button>
+                    {isAdmin && (
                       <button
                         type="button"
                         onClick={() => handleOpenEdit(product)}
                         className="inline-flex items-center justify-center gap-1 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-medium"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
-                        Modifier
+                        {hasPrice(product) ? 'Modifier' : 'Fixer le prix'}
                       </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               );
             })
@@ -213,7 +217,7 @@ export default function ProductListPage() {
                 <th className="px-6 py-3">Prix de Vente</th>
                 <th className="px-6 py-3">Quantité en Stock</th>
                 <th className="px-6 py-3 text-center">Statut</th>
-                {isAdmin && <th className="px-6 py-3 text-right">Actions</th>}
+                <th className="px-6 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm">
@@ -242,7 +246,13 @@ export default function ProductListPage() {
                         {product.categories?.name || 'Accessoires'}
                       </td>
                       {isAdmin && <td className="px-6 py-4 text-gray-500">{formatCurrency(product.purchase_price)}</td>}
-                      <td className="px-6 py-4 font-bold text-gray-900">{formatCurrency(product.selling_price)}</td>
+                      <td className="px-6 py-4 font-bold text-gray-900">
+                        {hasPrice(product) ? (
+                          formatCurrency(product.selling_price)
+                        ) : (
+                          <Badge colorClass="bg-amber-100 text-amber-800">Prix à fixer</Badge>
+                        )}
+                      </td>
                       <td className="px-6 py-4 font-bold text-gray-800">
                         {product.stock_quantity} unités
                       </td>
@@ -257,7 +267,7 @@ export default function ProductListPage() {
                           </Badge>
                         )}
                       </td>
-                      {isAdmin && <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4 text-right">
                         <div className="inline-flex items-center gap-2">
                           <button
                             type="button"
@@ -267,16 +277,18 @@ export default function ProductListPage() {
                             <PackagePlus className="w-3.5 h-3.5" />
                             Réappro.
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEdit(product)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium transition-colors"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                            Modifier
-                          </button>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(product)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium transition-colors"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                              {hasPrice(product) ? 'Modifier' : 'Fixer le prix'}
+                            </button>
+                          )}
                         </div>
-                      </td>}
+                      </td>
                     </tr>
                   );
                 })
@@ -339,7 +351,13 @@ export default function ProductListPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          {!isAdmin && (
+            <p className="p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg">
+              Les prix d'achat et de vente seront fixés par le patron. L'accessoire n'apparaîtra en caisse qu'une fois son prix fixé.
+            </p>
+          )}
+
+          {isAdmin && <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Prix d'achat unitaire (FCFA)</label>
               <input
@@ -360,7 +378,7 @@ export default function ProductListPage() {
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
-          </div>
+          </div>}
 
           <div className="grid grid-cols-2 gap-3">
             <div>

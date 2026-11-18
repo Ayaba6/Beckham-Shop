@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Smartphone, Mail, Lock, AlertTriangle } from 'lucide-react';
+import { Mail, Lock, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/common/Button';
 
@@ -44,11 +44,9 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-8 space-y-6">
         <div className="flex flex-col items-center text-center gap-3">
-          <div className="bg-indigo-600 p-3 rounded-xl text-white">
-            <Smartphone className="w-7 h-7" />
-          </div>
+          <img src="/logo.png" alt="Logo BTNT Services" className="h-24 w-auto" />
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">ShopManager</h1>
+            <h1 className="text-2xl font-bold text-gray-900">BTNT Services</h1>
             <p className="text-sm text-gray-500">Connectez-vous pour accéder à la boutique</p>
           </div>
         </div>

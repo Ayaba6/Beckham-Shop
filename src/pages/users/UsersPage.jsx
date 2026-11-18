@@ -81,7 +81,7 @@ export default function UsersPage() {
   };
 
   const handleCopyCredentials = async () => {
-    const text = `Connexion ShopManager\nEmail : ${createdAccount.email}\nMot de passe : ${createdAccount.password}`;
+    const text = `Connexion BTNT Services\nEmail : ${createdAccount.email}\nMot de passe : ${createdAccount.password}`;
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);

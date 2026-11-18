@@ -132,7 +132,7 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Tableau de bord</h1>
-          <p className="text-sm text-gray-500">Bienvenue sur ShopManager. Voici l'état de votre boutique.</p>
+          <p className="text-sm text-gray-500">Bienvenue chez BTNT Services. Voici l'état de votre boutique.</p>
         </div>
         <Button onClick={fetchDashboardData} variant="secondary" className="self-start">
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />

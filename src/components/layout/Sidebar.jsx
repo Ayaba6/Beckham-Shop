@@ -50,12 +50,10 @@ export default function Sidebar({ isOpen = false, onClose }) {
     >
       {/* Brand Header */}
       <div className="p-5 flex items-center gap-3 border-b border-slate-800">
-        <div className="bg-indigo-600 p-2 rounded-lg text-white">
-          <Smartphone className="w-6 h-6" />
-        </div>
-        <div className="flex-1">
-          <h1 className="font-bold text-lg leading-tight">ShopManager</h1>
-          <p className="text-xs text-slate-400">Accessoires & Caisse</p>
+        <img src="/logo.png" alt="" className="w-12 h-10 object-contain bg-white rounded-lg p-0.5 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <h1 className="font-bold text-lg leading-tight">BTNT Services</h1>
+          <p className="text-xs text-slate-400">La passion de communiquer</p>
         </div>
         <button
           onClick={onClose}

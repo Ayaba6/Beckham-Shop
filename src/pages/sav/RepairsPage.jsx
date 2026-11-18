@@ -9,7 +9,8 @@ import {
   Phone,
   User,
   Smartphone,
-  ShieldCheck
+  ShieldCheck,
+  Camera
 } from 'lucide-react';
 import { generateWarrantyPdf } from '../../components/pdf/WarrantyPdf';
 import { useRepairs } from '../../hooks/useRepairs';
@@ -19,6 +20,23 @@ import { supabase } from '../../config/supabaseClient';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 import Badge from '../../components/common/Badge';
+
+const PHOTO_BUCKET = 'repair-photos';
+
+// Réduit la photo (souvent 3 à 5 Mo sur téléphone) avant l'envoi ; garde l'original si le navigateur ne sait pas la lire
+async function compressPhoto(file, maxSize = 1280) {
+  try {
+    const img = await createImageBitmap(file);
+    const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    return (await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.75))) || file;
+  } catch {
+    return file;
+  }
+}
 
 export default function RepairsPage() {
   const { repairs, loading, fetchRepairs, addRepair, updateRepairStatus } = useRepairs();
@@ -36,6 +54,26 @@ export default function RepairsPage() {
     issue_description: '',
     estimated_cost: '',
   });
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [viewedPhoto, setViewedPhoto] = useState(null); // { url, title }
+
+  const handlePhotoChange = (file) => {
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    setPhotoFile(file || null);
+    setPhotoPreview(file ? URL.createObjectURL(file) : '');
+  };
+
+  // Les photos sont privées : on demande un lien temporaire pour les afficher
+  const handleViewPhoto = async (repair) => {
+    const { data, error } = await supabase.storage.from(PHOTO_BUCKET).createSignedUrl(repair.photo_path, 3600);
+    if (error) {
+      alert('Impossible d\'afficher la photo : ' + error.message);
+      return;
+    }
+    setViewedPhoto({ url: data.signedUrl, title: repair.device_name });
+  };
 
   useEffect(() => {
     fetchRepairs();
@@ -44,8 +82,23 @@ export default function RepairsPage() {
   // Enregistrer une nouvelle prise en charge
   const handleSubmitRepair = async (e) => {
     e.preventDefault();
+    setSaving(true);
 
     try {
+      // 0. Envoyer la photo de l'appareil d'abord : si elle échoue, rien n'est enregistré
+      let photoPath = null;
+      if (photoFile) {
+        const blob = await compressPhoto(photoFile);
+        photoPath = `${crypto.randomUUID()}.jpg`;
+        const { error: uploadError } = await supabase.storage
+          .from(PHOTO_BUCKET)
+          .upload(photoPath, blob, { contentType: blob.type || 'image/jpeg' });
+        if (uploadError) {
+          alert('Erreur lors de l\'envoi de la photo : ' + uploadError.message);
+          return;
+        }
+      }
+
       // 1. Vérifier ou créer le client rapidement
       let customerId = null;
       if (newRepair.customer_phone) {
@@ -76,6 +129,7 @@ export default function RepairsPage() {
         issue_description: newRepair.issue_description,
         estimated_cost: Number(newRepair.estimated_cost) || 0,
         status: 'received',
+        ...(photoPath && { photo_path: photoPath }),
       });
 
       if (result.success) {
@@ -89,12 +143,15 @@ export default function RepairsPage() {
           issue_description: '',
           estimated_cost: '',
         });
+        handlePhotoChange(null);
         setTimeout(() => setSuccessMsg(''), 3000);
       } else {
         alert('Erreur lors de la création du SAV : ' + result.error);
       }
     } catch (err) {
       console.error('Erreur:', err);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -212,6 +269,15 @@ export default function RepairsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-gray-900 mr-auto">{formatCurrency(repair.estimated_cost)}</span>
+                  {repair.photo_path && (
+                    <button
+                      onClick={() => handleViewPhoto(repair)}
+                      className="p-2 text-indigo-700 bg-indigo-50 rounded-lg"
+                      aria-label="Voir la photo de l'appareil"
+                    >
+                      <Camera className="w-4 h-4" />
+                    </button>
+                  )}
                   {canIssueWarranty(repair) && (
                     <button
                       onClick={() => handleWarranty(repair)}
@@ -291,6 +357,15 @@ export default function RepairsPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="inline-flex items-center gap-2">
+                        {repair.photo_path && (
+                          <button
+                            onClick={() => handleViewPhoto(repair)}
+                            title="Voir la photo de l'appareil"
+                            className="p-1.5 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+                          >
+                            <Camera className="w-4 h-4" />
+                          </button>
+                        )}
                         {canIssueWarranty(repair) && (
                           <button
                             onClick={() => handleWarranty(repair)}
@@ -400,10 +475,43 @@ export default function RepairsPage() {
             />
           </div>
 
-          <Button type="submit" className="w-full py-2.5">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Photo de l'appareil (optionnel)</label>
+            <label className="flex items-center gap-3 px-3 py-2 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+              {photoPreview ? (
+                <img src={photoPreview} alt="Aperçu de l'appareil" className="w-14 h-14 object-cover rounded-md" />
+              ) : (
+                <Camera className="w-5 h-5 text-gray-400" />
+              )}
+              <span className="text-sm text-gray-600">
+                {photoPreview ? 'Changer la photo' : 'Prendre ou choisir une photo'}
+              </span>
+              {/* capture : ouvre directement l'appareil photo sur téléphone */}
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(e) => handlePhotoChange(e.target.files?.[0])}
+                className="sr-only"
+              />
+            </label>
+          </div>
+
+          <Button type="submit" isLoading={saving} className="w-full py-2.5">
             Enregistrer la fiche de dépôt
           </Button>
         </form>
+      </Modal>
+
+      {/* MODAL : PHOTO DE L'APPAREIL */}
+      <Modal
+        isOpen={!!viewedPhoto}
+        onClose={() => setViewedPhoto(null)}
+        title={viewedPhoto ? `Photo · ${viewedPhoto.title}` : ''}
+      >
+        {viewedPhoto && (
+          <img src={viewedPhoto.url} alt={`Appareil ${viewedPhoto.title}`} className="w-full rounded-lg" />
+        )}
       </Modal>
     </div>
   );

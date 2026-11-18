@@ -2,8 +2,23 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatCurrency, formatPaymentMethod } from '../../utils/formatters';
 
-export const SHOP_NAME = 'ShopManager';
-export const SHOP_SUBTITLE = 'Téléphones, Accessoires & Réparations';
+export const SHOP_NAME = 'BTNT Services';
+export const SHOP_SUBTITLE = 'La passion de communiquer';
+
+// Logo de public/logo.png, chargé une seule fois en data URL pour jsPDF (null si introuvable)
+let logoPromise = null;
+export function loadLogo() {
+  logoPromise ??= fetch('/logo.png')
+    .then((res) => (res.ok ? res.blob() : null))
+    .then((blob) => blob && new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    }))
+    .catch(() => null);
+  return logoPromise;
+}
 
 /**
  * Les polices standard de jsPDF ne gèrent pas les espaces insécables
@@ -21,19 +36,28 @@ export function pdfDate(dateString) {
 /**
  * En-tête commun aux documents PDF de la boutique. Retourne la position Y sous l'en-tête.
  */
-export function drawShopHeader(doc, title, reference) {
+export function drawShopHeader(doc, title, reference, logo = null) {
   const pageWidth = doc.internal.pageSize.getWidth();
 
   doc.setFillColor(79, 70, 229); // indigo-600
   doc.rect(0, 0, pageWidth, 28, 'F');
 
+  // Logo sur un cartouche blanc (le logo a un fond blanc), proportions 178x139
+  let textX = 14;
+  if (logo) {
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(10, 3, 28, 22, 2, 2, 'F');
+    doc.addImage(logo, 'PNG', 11, 4, 26, 20.3);
+    textX = 43;
+  }
+
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);
-  doc.text(SHOP_NAME, 14, 13);
+  doc.text(SHOP_NAME, textX, 13);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.text(SHOP_SUBTITLE, 14, 20);
+  doc.text(SHOP_SUBTITLE, textX, 20);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
@@ -52,12 +76,13 @@ export function drawShopHeader(doc, title, reference) {
  * `sale` : ligne de la table sales, enrichie de `customers` et de `sale_items`
  * (chaque item avec `products` et éventuellement `product_imeis`).
  */
-export function generateInvoicePdf(sale) {
+export async function generateInvoicePdf(sale) {
+  const logo = await loadLogo();
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const reference = `N° ${sale.id.slice(0, 8).toUpperCase()}`;
 
-  let y = drawShopHeader(doc, 'FACTURE', reference);
+  let y = drawShopHeader(doc, 'FACTURE', reference, logo);
 
   // Bloc infos vente / client
   doc.setFontSize(10);

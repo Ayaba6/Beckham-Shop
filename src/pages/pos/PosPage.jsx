@@ -110,7 +110,8 @@ export default function PosPage() {
   });
 
   // Filtrer uniquement les accessoires non sérialisés en stock
-  const accessories = products.filter((p) => !p.is_serialized && p.stock_quantity > 0);
+  // Un accessoire sans prix de vente (ajouté par un vendeur) attend que le patron le fixe
+  const accessories = products.filter((p) => !p.is_serialized && p.stock_quantity > 0 && Number(p.selling_price) > 0);
   const filteredAccessories = accessories.filter((p) =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (p.brand && p.brand.toLowerCase().includes(searchQuery.toLowerCase()))

@@ -14,7 +14,10 @@ export default function Navbar({ onMenuClick }) {
         >
           <Menu className="w-6 h-6" />
         </button>
-        <span className="font-bold text-gray-900 sm:hidden">ShopManager</span>
+        <span className="flex items-center gap-2 font-bold text-gray-900 sm:hidden">
+          <img src="/logo.png" alt="" className="h-8 w-auto" />
+          BTNT Services
+        </span>
 
         <div className="relative hidden sm:block w-64 md:w-80 lg:w-96">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
