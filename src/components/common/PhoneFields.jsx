@@ -1,45 +1,97 @@
-import React from 'react';
-import { PHONE_MODELS } from '../../utils/constants';
+import React, { useState } from 'react';
+import { PHONE_CATALOG, seriesOf } from '../../utils/phoneCatalog';
 
 const inputClass =
-  'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500';
+  'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white';
+const OTHER = '__autre';
+
+// Liste déroulante avec un choix « Autre… » qui ouvre un champ libre (téléphone absent du catalogue)
+function Choice({ label, options, value, onChange, required, placeholder, disabled }) {
+  const [other, setOther] = useState(false);
+  const isOther = other || (!!value && !options.includes(value));
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <select
+        required={required && !isOther}
+        disabled={disabled}
+        value={isOther ? OTHER : value || ''}
+        onChange={(e) => {
+          const picked = e.target.value;
+          setOther(picked === OTHER);
+          onChange(picked === OTHER ? '' : picked);
+        }}
+        className={`${inputClass} disabled:bg-gray-50 disabled:text-gray-400`}
+      >
+        <option value="">{disabled ? '—' : 'Choisir'}</option>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+        <option value={OTHER}>Autre…</option>
+      </select>
+      {isOther && (
+        <input
+          type="text"
+          autoFocus
+          required={required}
+          placeholder={placeholder}
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          className={`${inputClass} mt-2`}
+        />
+      )}
+    </div>
+  );
+}
 
 /**
  * Téléphone en 4 champs : Marque → Modèle → Série → Code (ex. Tecno → Camon → 11 → CF7).
- * `value` contient phone_brand, phone_model, phone_series, phone_code ; `onChange` reçoit l'objet modifié.
+ * `value` contient phone_brand, phone_model, phone_series, phone_code ; `onChange` reçoit les champs modifiés.
+ * Choisir une série du catalogue remplit son code.
  */
-export default function PhoneFields({ value, onChange, required = false, idPrefix = 'phone' }) {
-  const set = (field) => (e) => onChange({ ...value, [field]: e.target.value });
-  const brandKey = Object.keys(PHONE_MODELS).find((b) => b.toLowerCase() === (value.phone_brand || '').trim().toLowerCase());
-  const models = brandKey ? PHONE_MODELS[brandKey] : [];
+export default function PhoneFields({ value, onChange, required = false }) {
+  const brand = value.phone_brand || '';
+  const model = value.phone_model || '';
+  const models = Object.keys(PHONE_CATALOG[brand] || {});
+  const series = seriesOf(brand, model);
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Marque</label>
-        <input type="text" list={`${idPrefix}-brands`} required={required} placeholder="Ex: Tecno"
-          value={value.phone_brand || ''} onChange={set('phone_brand')} className={inputClass} />
-        <datalist id={`${idPrefix}-brands`}>
-          {Object.keys(PHONE_MODELS).map((b) => <option key={b} value={b} />)}
-        </datalist>
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Modèle</label>
-        <input type="text" list={`${idPrefix}-models`} required={required} placeholder="Ex: Camon"
-          value={value.phone_model || ''} onChange={set('phone_model')} className={inputClass} />
-        <datalist id={`${idPrefix}-models`}>
-          {models.map((m) => <option key={m} value={m} />)}
-        </datalist>
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Série</label>
-        <input type="text" placeholder="Ex: 11, 10 Play"
-          value={value.phone_series || ''} onChange={set('phone_series')} className={inputClass} />
-      </div>
+      <Choice
+        label="Marque"
+        required={required}
+        placeholder="Nom de la marque"
+        options={Object.keys(PHONE_CATALOG)}
+        value={brand}
+        onChange={(v) => onChange({ phone_brand: v, phone_model: '', phone_series: '', phone_code: '' })}
+      />
+      <Choice
+        key={`model-${brand}`}
+        label="Modèle"
+        required={required}
+        placeholder="Ex: Camon"
+        disabled={!brand}
+        options={models}
+        value={model}
+        onChange={(v) => onChange({ phone_model: v, phone_series: '', phone_code: '' })}
+      />
+      <Choice
+        key={`series-${brand}-${model}`}
+        label="Série"
+        placeholder="Ex: 11, 10 Play"
+        disabled={!model}
+        options={series.map((s) => s.series)}
+        value={value.phone_series || ''}
+        onChange={(v) => onChange({ phone_series: v, phone_code: series.find((s) => s.series === v)?.code || '' })}
+      />
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
-        <input type="text" placeholder="Ex: CF7, X688"
-          value={value.phone_code || ''} onChange={set('phone_code')} className={inputClass} />
+        <input
+          type="text"
+          placeholder="Ex: CF7, X688"
+          value={value.phone_code || ''}
+          onChange={(e) => onChange({ phone_code: e.target.value })}
+          className={inputClass}
+        />
       </div>
     </div>
   );

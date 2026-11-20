@@ -8,7 +8,6 @@ import LoginPage from '../pages/auth/LoginPage';
 import DashboardPage from '../pages/dashboard/DashboardPage';
 import PosPage from '../pages/pos/PosPage';
 import ProductListPage from '../pages/inventory/ProductListPage';
-import ImeiManagerPage from '../pages/inventory/ImeiManagerPage';
 import StockEntriesPage from '../pages/inventory/StockEntriesPage';
 import RepairsPage from '../pages/sav/RepairsPage';
 import SalesHistoryPage from '../pages/sales/SalesHistoryPage';
@@ -55,7 +54,6 @@ export default function AppRoutes() {
         <Route path="/pos" element={<PosPage />} />
         <Route path="/inventory" element={<ProductListPage />} />
         <Route path="/restocks" element={<AdminRoute><StockEntriesPage /></AdminRoute>} />
-        <Route path="/phones" element={<AdminRoute><ImeiManagerPage /></AdminRoute>} />
         <Route path="/sav" element={<RepairsPage />} />
         <Route path="/sales" element={<SalesHistoryPage />} />
         <Route path="/clients" element={<ClientsPage />} />

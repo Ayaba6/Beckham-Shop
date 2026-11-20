@@ -7,7 +7,6 @@ import {
   Wrench,
   Receipt,
   Users,
-  Smartphone,
   LogOut,
   HandCoins,
   PackagePlus,
@@ -23,7 +22,7 @@ const navigation = [
   { name: 'Caisse (POS)', to: '/pos', icon: ShoppingCart },
   { name: 'Stock Accessoires', to: '/inventory', icon: Package },
   { name: 'Réapprovisionnements', to: '/restocks', icon: PackagePlus, adminOnly: true },
-  { name: 'Téléphones & IMEI', to: '/phones', icon: Smartphone, adminOnly: true },
+  // Vente de téléphones masquée : la boutique se concentre sur les accessoires (page /phones conservée)
   { name: 'S.A.V & Réparations', to: '/sav', icon: Wrench },
   { name: 'Historique Ventes', to: '/sales', icon: Receipt },
   { name: 'Statistiques', to: '/stats', icon: BarChart3, adminOnly: true },

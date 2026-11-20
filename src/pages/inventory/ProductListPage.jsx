@@ -365,7 +365,6 @@ export default function ProductListPage() {
           <fieldset className="space-y-2">
             <legend className="text-sm font-semibold text-gray-800">Téléphone compatible (optionnel)</legend>
             <PhoneFields
-              idPrefix="product-phone"
               value={formData}
               onChange={(v) => setFormData({ ...formData, ...v })}
             />

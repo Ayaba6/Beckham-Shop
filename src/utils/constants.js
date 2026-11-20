@@ -48,23 +48,6 @@ export const REPAIR_STATUSES = [
   { id: 'delivered', label: 'Restitué au client' },
   { id: 'cancelled', label: 'Annulé' },
 ];
-// Marques et modèles du carnet de la boutique (suggestions ; on peut saisir autre chose)
-export const PHONE_MODELS = {
-  Tecno: ['Camon', 'Pova', 'Spark', 'Pouvoir', 'Pop', 'Phantom'],
-  Infinix: ['Hot', 'Smart', 'S', 'Note'],
-  Itel: [],
-  Redmi: [],
-  Samsung: [],
-  Huawei: [],
-  Honor: [],
-  Oppo: [],
-  Pixel: [],
-  Villaon: [],
-  Oale: [],
-  iPhone: [],
-  Realme: [],
-};
-
 // "Tecno Camon 11 (CF7)"
 export const phoneLabel = (p) =>
   [p?.phone_brand, p?.phone_model, p?.phone_series].filter(Boolean).join(' ') +

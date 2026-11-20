@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
   DollarSign, 
-  Smartphone, 
   Package, 
   Wrench, 
   TrendingUp, 
@@ -17,7 +16,6 @@ import Badge from '../../components/common/Badge';
 export default function DashboardPage() {
   const [stats, setStats] = useState({
     totalSalesToday: 0,
-    phonesInStock: 0,
     accessoriesLowStock: 0,
     pendingRepairs: 0,
   });
@@ -82,14 +80,6 @@ export default function DashboardPage() {
 
       setRecentSales(enrichedSales);
 
-      // 3. Compter les téléphones en stock (table product_imeis)
-      const { count: phoneCount, error: phoneError } = await supabase
-        .from('product_imeis')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'in_stock');
-
-      if (phoneError) throw phoneError;
-
       // 4. Compter les réparations en cours (table repairs)
       const { count: repairCount, error: repairError } = await supabase
         .from('repairs')
@@ -110,7 +100,6 @@ export default function DashboardPage() {
 
       setStats({
         totalSalesToday: revenueToday,
-        phonesInStock: phoneCount || 0,
         accessoriesLowStock: 3, // Valeur indicative ou requête dynamique selon vos seuils
         pendingRepairs: repairCount || 0,
       });
@@ -141,7 +130,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Cartes de Statistiques */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {/* CA du jour */}
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
           <div>
@@ -150,17 +139,6 @@ export default function DashboardPage() {
           </div>
           <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
             <DollarSign className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Téléphones en stock */}
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Téléphones en Stock</p>
-            <h3 className="text-xl font-bold text-gray-900 mt-1">{stats.phonesInStock} unités</h3>
-          </div>
-          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
-            <Smartphone className="w-6 h-6" />
           </div>
         </div>
 

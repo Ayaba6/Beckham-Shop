@@ -433,7 +433,6 @@ export default function RepairsPage() {
           <fieldset className="space-y-2">
             <legend className="text-sm font-semibold text-gray-800">Téléphone déposé</legend>
             <PhoneFields
-              idPrefix="repair-phone"
               required
               value={newRepair}
               onChange={(v) => setNewRepair({ ...newRepair, ...v })}
