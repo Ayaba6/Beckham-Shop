@@ -59,9 +59,38 @@ export const PHONE_CATALOG = {
   },
 };
 
-// [{ series, code }] d'un modèle
-export const seriesOf = (brand, model) =>
-  (PHONE_CATALOG[brand]?.[model] || []).map((s) => {
-    const [series, code = ''] = s.split('|');
-    return { series, code };
-  });
+// Retrouve la clé existante sans tenir compte des majuscules (« tecno » → « Tecno »)
+const keyIn = (obj, name) =>
+  Object.keys(obj).find((k) => k.toLowerCase() === name.toLowerCase()) ?? name;
+
+/**
+ * Catalogue complet { marque: { modèle: { série: [codes] } } } :
+ * PHONE_CATALOG + les téléphones déjà enregistrés en base (saisis via « Autre… »).
+ * `rows` : [{ phone_brand, phone_model, phone_series, phone_code }]
+ */
+export function buildCatalog(rows = []) {
+  const catalog = {};
+  const add = (brand, model, series, code) => {
+    brand = brand?.trim();
+    if (!brand) return;
+    const models = (catalog[keyIn(catalog, brand)] ??= {});
+    model = model?.trim();
+    if (!model) return;
+    const allSeries = (models[keyIn(models, model)] ??= {});
+    series = series?.trim();
+    if (!series) return;
+    const codes = (allSeries[keyIn(allSeries, series)] ??= []);
+    code = code?.trim();
+    if (code && !codes.some((c) => c.toLowerCase() === code.toLowerCase())) codes.push(code);
+  };
+
+  for (const [brand, models] of Object.entries(PHONE_CATALOG)) {
+    add(brand);
+    for (const [model, list] of Object.entries(models)) {
+      add(brand, model);
+      list.forEach((entry) => add(brand, model, ...entry.split('|')));
+    }
+  }
+  rows.forEach((r) => add(r.phone_brand, r.phone_model, r.phone_series, r.phone_code));
+  return catalog;
+}
