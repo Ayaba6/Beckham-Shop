@@ -12,6 +12,8 @@ import RestockModal from '../../components/inventory/RestockModal';
 import { useAuth } from '../../context/AuthContext';
 import { useProducts } from '../../hooks/useProducts';
 import { formatCurrency } from '../../utils/formatters';
+import { phoneLabel } from '../../utils/constants';
+import PhoneFields from '../../components/common/PhoneFields';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 import Badge from '../../components/common/Badge';
@@ -58,6 +60,10 @@ export default function ProductListPage() {
       selling_price: '',
       stock_quantity: 0,
       min_stock_alert: 5,
+      phone_brand: '',
+      phone_model: '',
+      phone_series: '',
+      phone_code: '',
     });
     setIsModalOpen(true);
   };
@@ -74,6 +80,10 @@ export default function ProductListPage() {
       selling_price: product.selling_price || '',
       stock_quantity: product.stock_quantity || 0,
       min_stock_alert: product.min_stock_alert || 5,
+      phone_brand: product.phone_brand || '',
+      phone_model: product.phone_model || '',
+      phone_series: product.phone_series || '',
+      phone_code: product.phone_code || '',
     });
     setIsModalOpen(true);
   };
@@ -108,8 +118,7 @@ export default function ProductListPage() {
 
   const accessoriesList = products.filter((p) => !p.is_serialized);
   const filteredProducts = accessoriesList.filter((p) =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (p.brand && p.brand.toLowerCase().includes(searchQuery.toLowerCase()))
+    [p.name, p.brand, phoneLabel(p)].some((v) => v && v.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -161,6 +170,7 @@ export default function ProductListPage() {
                       <p className="text-xs text-gray-400">
                         {[product.brand, product.categories?.name || 'Accessoires'].filter(Boolean).join(' · ')}
                       </p>
+                      {phoneLabel(product) && <p className="text-xs text-indigo-600">Pour {phoneLabel(product)}</p>}
                     </div>
                     {hasPrice(product) ? (
                       <span className="font-bold text-gray-900 shrink-0">{formatCurrency(product.selling_price)}</span>
@@ -241,6 +251,7 @@ export default function ProductListPage() {
                       <td className="px-6 py-4">
                         <div className="font-semibold text-gray-900">{product.name}</div>
                         {product.brand && <div className="text-xs text-gray-400">{product.brand}</div>}
+                        {phoneLabel(product) && <div className="text-xs text-indigo-600">Pour {phoneLabel(product)}</div>}
                       </td>
                       <td className="px-6 py-4 text-gray-600">
                         {product.categories?.name || 'Accessoires'}
@@ -327,10 +338,10 @@ export default function ProductListPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Marque (Optionnel)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Marque de l'accessoire</label>
               <input
                 type="text"
-                placeholder="Ex: Samsung, Remax"
+                placeholder="Optionnel. Ex: Oraimo, Remax"
                 value={formData.brand}
                 onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -350,6 +361,15 @@ export default function ProductListPage() {
               </select>
             </div>
           </div>
+
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-semibold text-gray-800">Téléphone compatible (optionnel)</legend>
+            <PhoneFields
+              idPrefix="product-phone"
+              value={formData}
+              onChange={(v) => setFormData({ ...formData, ...v })}
+            />
+          </fieldset>
 
           {!isAdmin && (
             <p className="p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg">

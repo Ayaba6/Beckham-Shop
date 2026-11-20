@@ -15,7 +15,8 @@ import {
 import { generateWarrantyPdf } from '../../components/pdf/WarrantyPdf';
 import { useRepairs } from '../../hooks/useRepairs';
 import { formatCurrency, formatDate } from '../../utils/formatters';
-import { REPAIR_STATUSES } from '../../utils/constants';
+import { REPAIR_STATUSES, phoneLabel } from '../../utils/constants';
+import PhoneFields from '../../components/common/PhoneFields';
 import { supabase } from '../../config/supabaseClient';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
@@ -46,14 +47,18 @@ export default function RepairsPage() {
   const [successMsg, setSuccessMsg] = useState('');
 
   // Formulaire de prise en charge SAV
-  const [newRepair, setNewRepair] = useState({
+  const emptyRepair = {
     customer_name: '',
     customer_phone: '',
-    device_name: '',
+    phone_brand: '',
+    phone_model: '',
+    phone_series: '',
+    phone_code: '',
     imei_or_serial: '',
     issue_description: '',
     estimated_cost: '',
-  });
+  };
+  const [newRepair, setNewRepair] = useState(emptyRepair);
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState('');
   const [saving, setSaving] = useState(false);
@@ -124,7 +129,11 @@ export default function RepairsPage() {
       // 2. Créer l'entrée SAV
       const result = await addRepair({
         customer_id: customerId,
-        device_name: newRepair.device_name,
+        device_name: phoneLabel(newRepair), // "Tecno Camon 11 (CF7)" : affichage, recherche et garantie
+        phone_brand: newRepair.phone_brand.trim(),
+        phone_model: newRepair.phone_model.trim(),
+        phone_series: newRepair.phone_series.trim() || null,
+        phone_code: newRepair.phone_code.trim() || null,
         imei_or_serial: newRepair.imei_or_serial,
         issue_description: newRepair.issue_description,
         estimated_cost: Number(newRepair.estimated_cost) || 0,
@@ -135,14 +144,7 @@ export default function RepairsPage() {
       if (result.success) {
         setSuccessMsg('Fiche SAV créée avec succès !');
         setIsAddModalOpen(false);
-        setNewRepair({
-          customer_name: '',
-          customer_phone: '',
-          device_name: '',
-          imei_or_serial: '',
-          issue_description: '',
-          estimated_cost: '',
-        });
+        setNewRepair(emptyRepair);
         handlePhotoChange(null);
         setTimeout(() => setSuccessMsg(''), 3000);
       } else {
@@ -428,28 +430,25 @@ export default function RepairsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Modèle de l'appareil</label>
-              <input
-                type="text"
-                required
-                placeholder="Ex: Samsung Galaxy A32"
-                value={newRepair.device_name}
-                onChange={(e) => setNewRepair({ ...newRepair, device_name: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Numéro IMEI ou Série</label>
-              <input
-                type="text"
-                placeholder="Optionnel"
-                value={newRepair.imei_or_serial}
-                onChange={(e) => setNewRepair({ ...newRepair, imei_or_serial: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-semibold text-gray-800">Téléphone déposé</legend>
+            <PhoneFields
+              idPrefix="repair-phone"
+              required
+              value={newRepair}
+              onChange={(v) => setNewRepair({ ...newRepair, ...v })}
+            />
+          </fieldset>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Numéro IMEI</label>
+            <input
+              type="text"
+              placeholder="Optionnel"
+              value={newRepair.imei_or_serial}
+              onChange={(e) => setNewRepair({ ...newRepair, imei_or_serial: e.target.value })}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
           </div>
 
           <div>

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { recordSale } from '../../hooks/useSales';
 import { useProfiles } from '../../hooks/useProfiles';
-import { POS_PAYMENT_METHODS, REPAYMENT_METHODS } from '../../utils/constants';
+import { POS_PAYMENT_METHODS, REPAYMENT_METHODS, phoneLabel } from '../../utils/constants';
 import { generateInvoicePdf } from '../../components/pdf/InvoicePdf';
 import { useProducts } from '../../hooks/useProducts';
 import { useCashRegister } from '../../hooks/useCashRegister';
@@ -113,8 +113,7 @@ export default function PosPage() {
   // Un accessoire sans prix de vente (ajouté par un vendeur) attend que le patron le fixe
   const accessories = products.filter((p) => !p.is_serialized && p.stock_quantity > 0 && Number(p.selling_price) > 0);
   const filteredAccessories = accessories.filter((p) =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (p.brand && p.brand.toLowerCase().includes(searchQuery.toLowerCase()))
+    [p.name, p.brand, phoneLabel(p)].some((v) => v && v.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   // Ajouter au panier
@@ -751,6 +750,7 @@ export default function PosPage() {
                         <td className="px-4 py-3">
                           <div className="font-semibold text-gray-900">{product.name}</div>
                           {product.brand && <div className="text-xs text-gray-400">{product.brand}</div>}
+                          {phoneLabel(product) && <div className="text-xs text-indigo-600">Pour {phoneLabel(product)}</div>}
                         </td>
                         <td className="px-4 py-3 text-gray-600 text-xs hidden sm:table-cell">
                           {product.categories?.name || 'Accessoires'}

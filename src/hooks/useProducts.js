@@ -8,6 +8,10 @@ const PRODUCT_COLUMNS = `
   name,
   brand,
   model,
+  phone_brand,
+  phone_model,
+  phone_series,
+  phone_code,
   category_id,
   selling_price,
   stock_quantity,
@@ -38,6 +42,12 @@ async function fetchProductCosts() {
   if (directError) return [];
   return direct || [];
 }
+
+// Téléphone compatible (Marque → Modèle → Série → Code), vide = null
+const phoneFields = (data) =>
+  Object.fromEntries(
+    ['phone_brand', 'phone_model', 'phone_series', 'phone_code'].map((k) => [k, data[k]?.trim() || null])
+  );
 
 export function useProducts() {
   const [products, setProducts] = useState([]);
@@ -102,6 +112,7 @@ export function useProducts() {
         stock_quantity: Number(productData.stock_quantity) || 0,
         min_stock_alert: Number(productData.min_stock_alert) || 5,
         is_serialized: Boolean(productData.is_serialized),
+        ...phoneFields(productData),
       };
 
       const { data, error } = await supabase
@@ -135,6 +146,7 @@ export function useProducts() {
         selling_price: Number(productData.selling_price) || 0,
         stock_quantity: Number(productData.stock_quantity) || 0,
         min_stock_alert: Number(productData.min_stock_alert) || 5,
+        ...phoneFields(productData),
       };
 
       const { data, error } = await supabase
