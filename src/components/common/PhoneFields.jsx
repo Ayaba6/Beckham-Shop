@@ -6,7 +6,7 @@ const inputClass =
 const OTHER = '__autre';
 
 // Liste déroulante avec un choix « Autre… » qui ouvre un champ libre (téléphone absent du catalogue)
-function Choice({ label, options, value, onChange, required, placeholder, disabled }) {
+export function Choice({ label, options, value, onChange, required, placeholder, disabled }) {
   const [other, setOther] = useState(false);
   const isOther = other || (!!value && !options.includes(value));
 

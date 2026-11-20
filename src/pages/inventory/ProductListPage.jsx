@@ -13,13 +13,15 @@ import { useAuth } from '../../context/AuthContext';
 import { useProducts } from '../../hooks/useProducts';
 import { formatCurrency } from '../../utils/formatters';
 import { phoneLabel } from '../../utils/constants';
-import PhoneFields from '../../components/common/PhoneFields';
+import PhoneFields, { Choice } from '../../components/common/PhoneFields';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 import Badge from '../../components/common/Badge';
 
 export default function ProductListPage() {
-  const { products, categories, loading, refreshProducts, addProduct, updateProduct } = useProducts();
+  const { products, categories, findOrCreateCategory, loading, refreshProducts, addProduct, updateProduct } = useProducts();
+  // Types proposés : ceux de la base (table categories) + les deux de base
+  const typeOptions = [...new Set(['Écran', 'Circuit de charge', ...categories.map((c) => c.name)])];
   const { isAdmin } = useAuth();
   const columnCount = isAdmin ? 7 : 6;
   // Un accessoire ajouté par un vendeur attend que le patron fixe son prix de vente
@@ -38,6 +40,8 @@ export default function ProductListPage() {
   };
 
   const [formData, setFormData] = useState({
+    type: '',
+
     name: '',
     brand: '',
     model: '',
@@ -52,6 +56,8 @@ export default function ProductListPage() {
   const handleOpenAdd = () => {
     setEditingProduct(null);
     setFormData({
+      type: '',
+
       name: '',
       brand: '',
       model: '',
@@ -72,6 +78,8 @@ export default function ProductListPage() {
   const handleOpenEdit = (product) => {
     setEditingProduct(product);
     setFormData({
+      type: product.categories?.name || '',
+
       name: product.name || '',
       brand: product.brand || '',
       model: product.model || '',
@@ -93,15 +101,30 @@ export default function ProductListPage() {
     e.preventDefault();
     let result;
 
+    // Le type choisi (ou saisi via « Autre… ») est enregistré en base et donne le nom :
+    // « Écran Infinix Hot 10 Play (X688) »
+    let category;
+    try {
+      category = await findOrCreateCategory(formData.type);
+    } catch (err) {
+      alert(err.message);
+      return;
+    }
+    const payload = {
+      ...formData,
+      category_id: category.id,
+      name: [category.name, phoneLabel(formData)].filter(Boolean).join(' '),
+    };
+
     if (editingProduct) {
       // Modification
-      result = await updateProduct(editingProduct.id, formData);
+      result = await updateProduct(editingProduct.id, payload);
       if (result.success) {
         setSuccessMsg('Accessoire modifié avec succès !');
       }
     } else {
       // Ajout
-      result = await addProduct({ ...formData, is_serialized: false });
+      result = await addProduct({ ...payload, is_serialized: false });
       if (result.success) {
         setSuccessMsg('Accessoire ajouté avec succès !');
       }
@@ -168,7 +191,7 @@ export default function ProductListPage() {
                     <div className="min-w-0">
                       <p className="font-semibold text-gray-900">{product.name}</p>
                       <p className="text-xs text-gray-400">
-                        {[product.brand, product.categories?.name || 'Accessoires'].filter(Boolean).join(' · ')}
+                        {product.categories?.name || 'Accessoire'}
                       </p>
                       {phoneLabel(product) && <p className="text-xs text-indigo-600">Pour {phoneLabel(product)}</p>}
                     </div>
@@ -222,7 +245,7 @@ export default function ProductListPage() {
             <thead>
               <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 <th className="px-6 py-3">Désignation</th>
-                <th className="px-6 py-3">Catégorie</th>
+                <th className="px-6 py-3">Type</th>
                 {isAdmin && <th className="px-6 py-3">Prix d'Achat</th>}
                 <th className="px-6 py-3">Prix de Vente</th>
                 <th className="px-6 py-3">Quantité en Stock</th>
@@ -250,7 +273,6 @@ export default function ProductListPage() {
                     <tr key={product.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="font-semibold text-gray-900">{product.name}</div>
-                        {product.brand && <div className="text-xs text-gray-400">{product.brand}</div>}
                         {phoneLabel(product) && <div className="text-xs text-indigo-600">Pour {phoneLabel(product)}</div>}
                       </td>
                       <td className="px-6 py-4 text-gray-600">
@@ -324,43 +346,15 @@ export default function ProductListPage() {
         title={editingProduct ? "Modifier l'accessoire" : "Ajouter un nouvel accessoire"}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l'accessoire</label>
-            <input
-              type="text"
-              required
-              placeholder="Ex: Chargeur Rapide Type-C 20W"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Marque de l'accessoire</label>
-              <input
-                type="text"
-                placeholder="Optionnel. Ex: Oraimo, Remax"
-                value={formData.brand}
-                onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
-              <select
-                value={formData.category_id}
-                onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-              >
-                <option value="">Sélectionner une catégorie</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+          <Choice
+            key={editingProduct?.id || 'new'}
+            label="Type de l'accessoire"
+            required
+            placeholder="Ex: Batterie, Vitre arrière"
+            options={typeOptions}
+            value={formData.type}
+            onChange={(type) => setFormData({ ...formData, type })}
+          />
 
           <fieldset className="space-y-2">
             <legend className="text-sm font-semibold text-gray-800">Téléphone compatible (optionnel)</legend>

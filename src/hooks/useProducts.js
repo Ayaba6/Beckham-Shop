@@ -169,9 +169,22 @@ export function useProducts() {
     }
   };
 
+  // Type d'accessoire (table categories) : retrouve le type existant ou l'enregistre s'il est nouveau
+  const findOrCreateCategory = async (name) => {
+    const clean = name.trim();
+    const existing = categories.find((c) => c.name.toLowerCase() === clean.toLowerCase());
+    if (existing) return existing;
+
+    const { data, error } = await supabase.from('categories').insert([{ name: clean }]).select().single();
+    if (error) throw new Error(`Type « ${clean} » non enregistré : ${error.message}`);
+    setCategories((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+    return data;
+  };
+
   return {
     products,
     categories,
+    findOrCreateCategory,
     loading,
     error,
     refreshProducts: fetchProducts,
