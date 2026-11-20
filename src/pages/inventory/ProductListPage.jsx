@@ -18,10 +18,13 @@ import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 import Badge from '../../components/common/Badge';
 
+// Même liste que supabase/types_accessoires.sql
+const ACCESSORY_TYPES = ['Circuit de charge', 'Écran', 'Chargeur', 'Couverture', 'Vitre de photo', "Vitre d'écran", 'Bouton allumage', 'Tactile'];
+
 export default function ProductListPage() {
   const { products, categories, findOrCreateCategory, loading, refreshProducts, addProduct, updateProduct } = useProducts();
-  // Types proposés : ceux de la base (table categories) + les deux de base
-  const typeOptions = [...new Set(['Écran', 'Circuit de charge', ...categories.map((c) => c.name)])];
+  // Types proposés : la liste de la boutique + ceux de la base (table categories, dont les « Autre… »)
+  const typeOptions = [...new Set([...ACCESSORY_TYPES, ...categories.map((c) => c.name)])];
   const { isAdmin } = useAuth();
   const columnCount = isAdmin ? 7 : 6;
   // Un accessoire ajouté par un vendeur attend que le patron fixe son prix de vente
