@@ -51,7 +51,8 @@ export default function Sidebar({ isOpen = false, onClose }) {
       <div className="p-5 flex items-center gap-3 border-b border-slate-800">
         <img src="/logo.png" alt="" className="w-12 h-10 object-contain bg-white rounded-lg p-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
-          <h1 className="font-bold text-lg leading-tight">BTNT Services</h1>
+          {/* Menu mobile : le logo suffit, le nom reste lu par les lecteurs d'écran */}
+          <h1 className="font-bold text-lg leading-tight sr-only lg:not-sr-only">BTNT Services</h1>
           <p className="text-xs text-slate-400">La passion de communiquer</p>
         </div>
         <button
