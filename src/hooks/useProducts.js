@@ -75,6 +75,7 @@ export function useProducts() {
         supabase
           .from('products')
           .select(PRODUCT_COLUMNS)
+          .eq('archived', false) // articles supprimés par l'administrateur
           .order('created_at', { ascending: false }),
         fetchProductCosts(),
       ]);
@@ -172,6 +173,21 @@ export function useProducts() {
     }
   };
 
+  // Supprimer un article (administrateur) : il est archivé pour garder l'historique des ventes
+  const deleteProduct = async (id) => {
+    const { data, error } = await supabase
+      .from('products')
+      .update({ archived: true })
+      .eq('id', id)
+      .select('id');
+
+    if (error) return { success: false, error: error.message };
+    // Sans ligne renvoyée, la règle d'accès a bloqué la suppression
+    if (!data?.length) return { success: false, error: 'Suppression refusée (réservée aux administrateurs).' };
+    setProducts((prev) => prev.filter((p) => p.id !== id));
+    return { success: true };
+  };
+
   // Type d'accessoire (table categories) : retrouve le type existant ou l'enregistre s'il est nouveau
   const findOrCreateCategory = async (name) => {
     const clean = name.trim();
@@ -193,5 +209,6 @@ export function useProducts() {
     refreshProducts: fetchProducts,
     addProduct,
     updateProduct,
+    deleteProduct,
   };
 }

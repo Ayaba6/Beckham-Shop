@@ -6,7 +6,8 @@ import {
   CheckCircle2, 
   AlertTriangle,
   Edit2,
-  PackagePlus
+  PackagePlus,
+  Trash2
 } from 'lucide-react';
 import RestockModal from '../../components/inventory/RestockModal';
 import { useAuth } from '../../context/AuthContext';
@@ -23,7 +24,7 @@ import Badge from '../../components/common/Badge';
 const ACCESSORY_TYPES = ['Circuit de charge', 'Écran', 'Chargeur', 'Couverture', 'Vitre de photo', "Vitre d'écran", 'Bouton allumage', 'Tactile'];
 
 export default function ProductListPage() {
-  const { products, categories, findOrCreateCategory, loading, refreshProducts, addProduct, updateProduct } = useProducts();
+  const { products, categories, findOrCreateCategory, loading, refreshProducts, addProduct, updateProduct, deleteProduct } = useProducts();
   // Types proposés : la liste de la boutique + ceux de la base (table categories, dont les « Autre… »)
   const typeOptions = [...new Set([...ACCESSORY_TYPES, ...categories.map((c) => c.name)])];
   const { isAdmin } = useAuth();
@@ -46,6 +47,19 @@ export default function ProductListPage() {
     });
   }, []);
   const soldOf = (product) => soldById[product.id] || 0;
+
+  const handleDelete = async (product) => {
+    if (!window.confirm(`Supprimer « ${product.name} » ?
+
+Il disparaîtra du stock et de la caisse. Les ventes passées qui le citent sont conservées.`)) return;
+    const result = await deleteProduct(product.id);
+    if (!result.success) {
+      alert('Erreur : ' + result.error);
+      return;
+    }
+    setSuccessMsg('Accessoire supprimé.');
+    setTimeout(() => setSuccessMsg(''), 3000);
+  };
 
   const handleRestockSuccess = (msg) => {
     setSuccessMsg(msg);
@@ -239,7 +253,7 @@ export default function ProductListPage() {
                     </div>
                     {isAdmin && <span className="text-gray-500">Achat : {formatCurrency(product.purchase_price)}</span>}
                   </div>
-                  <div className={`grid gap-2 ${isAdmin ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  <div className={`grid gap-2 ${isAdmin ? 'grid-cols-3' : 'grid-cols-1'}`}>
                     <button
                       type="button"
                       onClick={() => setRestockingProduct(product)}
@@ -256,6 +270,16 @@ export default function ProductListPage() {
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                         {hasPrice(product) ? 'Modifier' : 'Fixer le prix'}
+                      </button>
+                    )}
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(product)}
+                        className="inline-flex items-center justify-center gap-1 px-3 py-2 bg-red-50 text-red-700 rounded-lg text-xs font-medium"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Supprimer
                       </button>
                     )}
                   </div>
@@ -345,6 +369,17 @@ export default function ProductListPage() {
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                               {hasPrice(product) ? 'Modifier' : 'Fixer le prix'}
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(product)}
+                              title="Supprimer l'accessoire"
+                              aria-label={`Supprimer ${product.name}`}
+                              className="p-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           )}
                         </div>
