@@ -17,12 +17,14 @@ import Badge from '../../components/common/Badge';
 
 const ROLE_COLORS = {
   admin: 'bg-indigo-100 text-indigo-800',
+  cashier: 'bg-emerald-100 text-emerald-800',
   seller: 'bg-gray-100 text-gray-800',
 };
 
 const ROLE_DESCRIPTIONS = {
   admin: 'Accès complet : statistiques, prix d\'achat, réapprovisionnements, gestion du stock et des utilisateurs.',
-  seller: 'Caisse, clients, crédits, SAV et historique des ventes. Pas d\'accès aux prix d\'achat ni aux statistiques.',
+  cashier: 'Caisse, clients, crédits, SAV et historique des ventes. Pas d\'accès aux prix d\'achat ni aux statistiques.',
+  seller: 'Réception des accessoires et liste des produits (prix, stock). Ni caisse, ni crédits, ni prix d\'achat.',
 };
 
 const emptyCreateForm = { fullName: '', email: '', password: '', role: 'seller' };
@@ -332,6 +334,7 @@ export default function UsersPage() {
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
               >
                 <option value="seller">{ROLE_LABELS.seller}</option>
+                <option value="cashier">{ROLE_LABELS.cashier}</option>
                 <option value="admin">{ROLE_LABELS.admin}</option>
               </select>
               <p className="mt-1.5 text-xs text-gray-500">{ROLE_DESCRIPTIONS[createForm.role]}</p>
@@ -370,6 +373,7 @@ export default function UsersPage() {
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
             >
               <option value="seller">{ROLE_LABELS.seller}</option>
+              <option value="cashier">{ROLE_LABELS.cashier}</option>
               <option value="admin">{ROLE_LABELS.admin}</option>
             </select>
             <p className="mt-1.5 text-xs text-gray-500">{ROLE_DESCRIPTIONS[formData.role]}</p>

@@ -38,6 +38,12 @@ function AdminRoute({ children }) {
   return isAdmin ? children : <Navigate to="/dashboard" replace />;
 }
 
+// Le vendeur ne fait que la réception du stock : toutes les autres pages le renvoient au stock
+function StaffRoute({ children }) {
+  const { isSeller } = useAuth();
+  return isSeller ? <Navigate to="/inventory" replace /> : children;
+}
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -50,14 +56,14 @@ export default function AppRoutes() {
         }
       >
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/pos" element={<PosPage />} />
+        <Route path="/dashboard" element={<StaffRoute><DashboardPage /></StaffRoute>} />
+        <Route path="/pos" element={<StaffRoute><PosPage /></StaffRoute>} />
         <Route path="/inventory" element={<ProductListPage />} />
         <Route path="/restocks" element={<AdminRoute><StockEntriesPage /></AdminRoute>} />
-        <Route path="/sav" element={<RepairsPage />} />
-        <Route path="/sales" element={<SalesHistoryPage />} />
-        <Route path="/clients" element={<ClientsPage />} />
-        <Route path="/credits" element={<CreditsPage />} />
+        <Route path="/sav" element={<StaffRoute><RepairsPage /></StaffRoute>} />
+        <Route path="/sales" element={<StaffRoute><SalesHistoryPage /></StaffRoute>} />
+        <Route path="/clients" element={<StaffRoute><ClientsPage /></StaffRoute>} />
+        <Route path="/credits" element={<StaffRoute><CreditsPage /></StaffRoute>} />
         <Route path="/stats" element={<AdminRoute><StatsPage /></AdminRoute>} />
         <Route path="/users" element={<AdminRoute><UsersPage /></AdminRoute>} />
       </Route>

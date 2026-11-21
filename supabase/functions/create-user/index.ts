@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
   const email = (body.email || '').trim().toLowerCase();
   const password = body.password || '';
   const fullName = (body.full_name || '').trim();
-  const role = body.role === 'admin' ? 'admin' : 'seller';
+  const role = ['admin', 'cashier', 'seller'].includes(body.role ?? '') ? body.role! : 'seller';
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: 'Email invalide' }, 400);
   if (password.length < 8) return json({ error: 'Le mot de passe doit contenir au moins 8 caractères' }, 400);

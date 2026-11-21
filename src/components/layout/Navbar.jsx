@@ -1,8 +1,10 @@
 import React from 'react';
 import { Search, Bell, ShoppingCart, Menu } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Navbar({ onMenuClick }) {
+  const { isSeller } = useAuth();
   return (
     <header className="h-16 bg-white border-b border-gray-200 px-4 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-10 shadow-sm">
       <div className="flex items-center gap-3 min-w-0">
@@ -30,13 +32,13 @@ export default function Navbar({ onMenuClick }) {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-        <Link
+        {!isSeller && <Link
           to="/pos"
           className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
         >
           <ShoppingCart className="w-4 h-4" />
           <span>Caisse</span>
-        </Link>
+        </Link>}
 
         <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg relative">
           <Bell className="w-5 h-5" />

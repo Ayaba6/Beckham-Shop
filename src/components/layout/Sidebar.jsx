@@ -16,11 +16,11 @@ import {
 } from 'lucide-react';
 import { useAuth, ROLE_LABELS } from '../../context/AuthContext';
 
-// adminOnly : visible uniquement par les administrateurs
+// adminOnly : visible uniquement par les administrateurs ; forSeller : visible aussi par le vendeur
 const navigation = [
   { name: 'Tableau de bord', to: '/dashboard', icon: LayoutDashboard },
   { name: 'Caisse (POS)', to: '/pos', icon: ShoppingCart },
-  { name: 'Stock Accessoires', to: '/inventory', icon: Package },
+  { name: 'Stock Accessoires', to: '/inventory', icon: Package, forSeller: true },
   { name: 'Réapprovisionnements', to: '/restocks', icon: PackagePlus, adminOnly: true },
   // Vente de téléphones masquée : la boutique se concentre sur les accessoires (page /phones conservée)
   { name: 'S.A.V & Réparations', to: '/sav', icon: Wrench },
@@ -32,8 +32,10 @@ const navigation = [
 ];
 
 export default function Sidebar({ isOpen = false, onClose }) {
-  const { displayName, role, isAdmin, signOut } = useAuth();
-  const visibleNavigation = navigation.filter((item) => !item.adminOnly || isAdmin);
+  const { displayName, role, isAdmin, isSeller, signOut } = useAuth();
+  const visibleNavigation = navigation.filter((item) =>
+    isSeller ? item.forSeller : !item.adminOnly || isAdmin
+  );
 
   return (
     <>

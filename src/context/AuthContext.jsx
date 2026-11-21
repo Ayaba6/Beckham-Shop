@@ -5,6 +5,7 @@ const AuthContext = createContext();
 
 export const ROLE_LABELS = {
   admin: 'Administrateur',
+  cashier: 'Caissière',
   seller: 'Vendeur',
 };
 
@@ -85,6 +86,8 @@ export function AuthProvider({ children }) {
         profile,
         role,
         isAdmin: role === 'admin',
+        // Le vendeur réceptionne le stock et consulte les produits ; il n'encaisse pas
+        isSeller: role === 'seller',
         profilesMissing,
         displayName: profile?.full_name || user?.email || 'Utilisateur',
         loading,
