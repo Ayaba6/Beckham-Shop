@@ -14,7 +14,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useProducts } from '../../hooks/useProducts';
 import { supabase } from '../../config/supabaseClient';
 import { formatCurrency } from '../../utils/formatters';
-import { phoneLabel } from '../../utils/constants';
+import { phoneLabel, phoneName } from '../../utils/constants';
 import PhoneFields, { Choice } from '../../components/common/PhoneFields';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
@@ -28,7 +28,14 @@ export default function ProductListPage() {
   // Types proposés : la liste de la boutique + ceux de la base (table categories, dont les « Autre… »)
   const typeOptions = [...new Set([...ACCESSORY_TYPES, ...categories.map((c) => c.name)])];
   const { isAdmin } = useAuth();
-  const columnCount = isAdmin ? 9 : 8;
+  const columnCount = isAdmin ? 7 : 6;
+  // Affichage : le type en titre, le téléphone en dessous (le nom complet les répète tous les deux)
+  const titleOf = (product) => product.categories?.name || product.name;
+  const phoneOf = (product) =>
+    product.categories?.name && product.phone_brand
+      ? phoneName(product) +
+        (product.phone_code ? ` · ${product.phone_code}` : '')
+      : '';
   // Un accessoire ajouté par un vendeur attend que le patron fixe son prix de vente
   const hasPrice = (product) => Number(product.selling_price) > 0;
 
@@ -188,7 +195,7 @@ Il disparaîtra du stock et de la caisse. Les ventes passées qui le citent sont
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Gestion des Stocks d'Accessoires</h1>
-          <p className="text-sm text-gray-500">Suivi des quantités globales, coques, chargeurs et autres articles.</p>
+          <p className="text-sm text-gray-500">Pièces et accessoires par téléphone : prix, ventes et stock restant.</p>
         </div>
         <Button onClick={handleOpenAdd}>
           <Plus className="w-4 h-4" />
@@ -221,11 +228,8 @@ Il disparaîtra du stock et de la caisse. Les ventes passées qui le citent sont
                 <div key={product.id} className="px-4 py-3 space-y-2">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-semibold text-gray-900">{product.name}</p>
-                      <p className="text-xs text-gray-400">
-                        {product.categories?.name || 'Accessoire'}
-                      </p>
-                      {phoneLabel(product) && <p className="text-xs text-indigo-600">Pour {phoneLabel(product)}</p>}
+                      <p className="font-semibold text-gray-900">{titleOf(product)}</p>
+                      {phoneOf(product) && <p className="text-xs text-indigo-600">{phoneOf(product)}</p>}
                     </div>
                     {hasPrice(product) ? (
                       <div className="text-right shrink-0">
@@ -239,20 +243,12 @@ Il disparaîtra du stock et de la caisse. Les ventes passées qui le citent sont
                   <div className="grid grid-cols-3 gap-2 text-center text-xs">
                     <div className="bg-gray-50 rounded-lg py-1.5"><p className="text-gray-500">Stock</p><p className="font-semibold text-gray-800">{product.stock_quantity + soldOf(product)}</p></div>
                     <div className="bg-gray-50 rounded-lg py-1.5"><p className="text-gray-500">Vendu</p><p className="font-semibold text-gray-800">{soldOf(product)}</p></div>
-                    <div className="bg-gray-50 rounded-lg py-1.5"><p className="text-gray-500">Restant</p><p className="font-semibold text-gray-800">{product.stock_quantity}</p></div>
-                  </div>
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                    <div className="flex items-center gap-2">
-                      {isLowStock ? (
-                        <Badge colorClass="bg-red-100 text-red-700">
-                          <AlertTriangle className="w-3 h-3 mr-1" /> Stock faible
-                        </Badge>
-                      ) : (
-                        <Badge colorClass="bg-emerald-100 text-emerald-800">En stock</Badge>
-                      )}
+                    <div className={`rounded-lg py-1.5 ${isLowStock ? 'bg-red-50 text-red-700' : 'bg-gray-50'}`}>
+                      <p className={isLowStock ? '' : 'text-gray-500'}>{isLowStock ? 'Stock faible' : 'Restant'}</p>
+                      <p className="font-semibold">{product.stock_quantity}</p>
                     </div>
-                    {isAdmin && <span className="text-gray-500">Achat : {formatCurrency(product.purchase_price)}</span>}
                   </div>
+                  {isAdmin && <p className="text-xs text-gray-500">Achat : {formatCurrency(product.purchase_price)}</p>}
                   <div className={`grid gap-2 ${isAdmin ? 'grid-cols-3' : 'grid-cols-1'}`}>
                     <button
                       type="button"
@@ -297,11 +293,9 @@ Il disparaîtra du stock et de la caisse. Les ventes passées qui le citent sont
                 {isAdmin && <th className="px-6 py-3">Prix d'achat</th>}
                 <th className="px-6 py-3">Prix détail</th>
                 <th className="px-6 py-3">Prix grossiste</th>
-                <th className="px-6 py-3 text-center">Stock</th>
                 <th className="px-6 py-3 text-center">Vendu</th>
                 <th className="px-6 py-3 text-center">Restant</th>
-                <th className="px-6 py-3 text-center">Statut</th>
-                <th className="px-6 py-3 text-right">Actions</th>
+                <th className="px-6 py-3 text-right"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm">
@@ -323,8 +317,8 @@ Il disparaîtra du stock et de la caisse. Les ventes passées qui le citent sont
                   return (
                     <tr key={product.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
-                        <div className="font-semibold text-gray-900">{product.name}</div>
-                        {phoneLabel(product) && <div className="text-xs text-indigo-600">Pour {phoneLabel(product)}</div>}
+                        <div className="font-semibold text-gray-900">{titleOf(product)}</div>
+                        {phoneOf(product) && <div className="text-xs text-indigo-600">{phoneOf(product)}</div>}
                       </td>
                       {isAdmin && <td className="px-6 py-4 text-gray-500">{formatCurrency(product.purchase_price)}</td>}
                       <td className="px-6 py-4 font-bold text-gray-900">
@@ -337,38 +331,37 @@ Il disparaîtra du stock et de la caisse. Les ventes passées qui le citent sont
                       <td className="px-6 py-4 text-gray-700">
                         {Number(product.wholesale_price) > 0 ? formatCurrency(product.wholesale_price) : '-'}
                       </td>
-                      <td className="px-6 py-4 text-center text-gray-700">{product.stock_quantity + soldOf(product)}</td>
                       <td className="px-6 py-4 text-center text-gray-700">{soldOf(product)}</td>
-                      <td className="px-6 py-4 text-center font-bold text-gray-900">{product.stock_quantity}</td>
                       <td className="px-6 py-4 text-center">
                         {isLowStock ? (
-                          <Badge colorClass="bg-red-100 text-red-700 flex items-center gap-1 w-fit mx-auto">
-                            <AlertTriangle className="w-3 h-3" /> Stock Faible
-                          </Badge>
+                          <span className="inline-flex items-center gap-1 font-bold text-red-600" title="Stock faible">
+                            <AlertTriangle className="w-3.5 h-3.5" aria-label="Stock faible" />
+                            {product.stock_quantity}
+                          </span>
                         ) : (
-                          <Badge colorClass="bg-emerald-100 text-emerald-800 w-fit mx-auto">
-                            En stock
-                          </Badge>
+                          <span className="font-bold text-gray-900">{product.stock_quantity}</span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <div className="inline-flex items-center gap-2">
+                        <div className="inline-flex items-center gap-1.5">
                           <button
                             type="button"
                             onClick={() => setRestockingProduct(product)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-medium transition-colors"
+                            title="Réapprovisionner"
+                            aria-label={`Réapprovisionner ${product.name}`}
+                            className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg transition-colors"
                           >
                             <PackagePlus className="w-3.5 h-3.5" />
-                            Réappro.
                           </button>
                           {isAdmin && (
                             <button
                               type="button"
                               onClick={() => handleOpenEdit(product)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium transition-colors"
+                              title={hasPrice(product) ? 'Modifier' : 'Fixer le prix'}
+                              aria-label={`${hasPrice(product) ? 'Modifier' : 'Fixer le prix de'} ${product.name}`}
+                              className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-colors"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
-                              {hasPrice(product) ? 'Modifier' : 'Fixer le prix'}
                             </button>
                           )}
                           {isAdmin && (

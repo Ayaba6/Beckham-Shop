@@ -49,6 +49,12 @@ export const REPAIR_STATUSES = [
   { id: 'cancelled', label: 'Annulé' },
 ];
 // "Tecno Camon 11 (CF7)"
-export const phoneLabel = (p) =>
-  [p?.phone_brand, p?.phone_model, p?.phone_series].filter(Boolean).join(' ') +
-  (p?.phone_code ? ` (${p.phone_code})` : '');
+export const phoneName = (p) => {
+  const words = (p?.phone_model || '').split(' ');
+  // « Galaxy A » + « A15 » → « Galaxy A15 » : on retire le dernier mot du modèle s'il commence la série
+  if ((p?.phone_series || '').toLowerCase().startsWith(words.at(-1).toLowerCase())) words.pop();
+  const model = words.join(' ');
+  return [p?.phone_brand, model, p?.phone_series].filter(Boolean).join(' ');
+};
+
+export const phoneLabel = (p) => phoneName(p) + (p?.phone_code ? ` (${p.phone_code})` : '');
