@@ -23,7 +23,7 @@ const navigation = [
   { name: 'Stock Accessoires', to: '/inventory', icon: Package, forSeller: true },
   { name: 'Réapprovisionnements', to: '/restocks', icon: PackagePlus, adminOnly: true },
   // Vente de téléphones masquée : la boutique se concentre sur les accessoires (page /phones conservée)
-  { name: 'S.A.V & Réparations', to: '/sav', icon: Wrench },
+  { name: 'S.A.V & Réparations', to: '/sav', icon: Wrench, forSeller: true },
   { name: 'Historique Ventes', to: '/sales', icon: Receipt },
   { name: 'Statistiques', to: '/stats', icon: BarChart3, adminOnly: true },
   { name: 'Clients', to: '/clients', icon: Users },

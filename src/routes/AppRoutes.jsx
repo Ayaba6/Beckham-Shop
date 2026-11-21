@@ -38,7 +38,7 @@ function AdminRoute({ children }) {
   return isAdmin ? children : <Navigate to="/dashboard" replace />;
 }
 
-// Le vendeur ne fait que la réception du stock : toutes les autres pages le renvoient au stock
+// Le vendeur réceptionne le stock et gère le SAV : les autres pages le renvoient au stock
 function StaffRoute({ children }) {
   const { isSeller } = useAuth();
   return isSeller ? <Navigate to="/inventory" replace /> : children;
@@ -60,7 +60,7 @@ export default function AppRoutes() {
         <Route path="/pos" element={<StaffRoute><PosPage /></StaffRoute>} />
         <Route path="/inventory" element={<ProductListPage />} />
         <Route path="/restocks" element={<AdminRoute><StockEntriesPage /></AdminRoute>} />
-        <Route path="/sav" element={<StaffRoute><RepairsPage /></StaffRoute>} />
+        <Route path="/sav" element={<RepairsPage />} />
         <Route path="/sales" element={<StaffRoute><SalesHistoryPage /></StaffRoute>} />
         <Route path="/clients" element={<StaffRoute><ClientsPage /></StaffRoute>} />
         <Route path="/credits" element={<StaffRoute><CreditsPage /></StaffRoute>} />

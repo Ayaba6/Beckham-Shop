@@ -40,6 +40,11 @@ export default function PosPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState([]);
+  // Encaissement au prix détail ou au prix grossiste (prix détail si l'article n'a pas de prix grossiste)
+  const [priceMode, setPriceMode] = useState('retail');
+  const hasWholesale = (item) => Number(item.wholesale_price) > 0;
+  const unitPriceOf = (item) =>
+    priceMode === 'wholesale' && hasWholesale(item) ? Number(item.wholesale_price) : Number(item.selling_price);
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -153,7 +158,7 @@ export default function PosPage() {
   };
 
   // Calculs financiers
-  const subtotalCart = cart.reduce((sum, item) => sum + item.selling_price * item.quantity, 0);
+  const subtotalCart = cart.reduce((sum, item) => sum + unitPriceOf(item) * item.quantity, 0);
   const discountVal = Number(discountAmount) || 0;
   const totalCartAmount = Math.max(0, subtotalCart - discountVal);
 
@@ -302,7 +307,7 @@ export default function PosPage() {
           name: item.name,
           brand: item.brand,
           quantity: item.quantity,
-          unitPrice: item.selling_price,
+          unitPrice: unitPriceOf(item),
         })),
         customerPhone,
         customerName,
@@ -323,6 +328,7 @@ export default function PosPage() {
       setLastSale({ ...result.sale, remaining: result.remaining });
 
       setCart([]);
+      setPriceMode('retail');
       setCustomerPhone('');
       setCustomerName('');
       setDiscountAmount('');
@@ -722,7 +728,7 @@ export default function PosPage() {
                   <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider sticky top-0 z-10 border-b border-gray-200">
                     <th className="px-4 py-3">Accessoire</th>
                     <th className="px-4 py-3 hidden sm:table-cell">Catégorie</th>
-                    <th className="px-4 py-3">Prix de Vente</th>
+                    <th className="px-4 py-3">Prix</th>
                     <th className="px-4 py-3">Stock</th>
                     <th className="px-4 py-3 text-right">Action</th>
                   </tr>
@@ -755,8 +761,11 @@ export default function PosPage() {
                         <td className="px-4 py-3 text-gray-600 text-xs hidden sm:table-cell">
                           {product.categories?.name || 'Accessoires'}
                         </td>
-                        <td className="px-4 py-3 font-bold text-indigo-600">
-                          {formatCurrency(product.selling_price)}
+                        <td className="px-4 py-3">
+                          <div className="font-bold text-indigo-600 whitespace-nowrap">{formatCurrency(product.selling_price)}</div>
+                          {hasWholesale(product) && (
+                            <div className="text-xs text-gray-500 whitespace-nowrap">Gros : {formatCurrency(product.wholesale_price)}</div>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <span className="text-xs font-semibold px-2 py-1 bg-gray-100 text-gray-800 rounded-md whitespace-nowrap">
@@ -794,6 +803,20 @@ export default function PosPage() {
               Panier en cours
             </h2>
 
+            <div role="group" aria-label="Prix appliqué" className="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-lg text-sm font-medium">
+              {[['retail', 'Prix détail'], ['wholesale', 'Prix gros']].map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  aria-pressed={priceMode === mode}
+                  onClick={() => setPriceMode(mode)}
+                  className={`py-2 rounded-md transition-colors ${priceMode === mode ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {cart.length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-6">Le panier est vide.</p>
@@ -802,7 +825,12 @@ export default function PosPage() {
                   <div key={item.id} className="flex items-center justify-between bg-gray-50 p-2.5 rounded-lg text-sm">
                     <div className="flex-1 min-w-0 pr-2">
                       <p className="font-semibold text-gray-800 truncate">{item.name}</p>
-                      <p className="text-xs text-indigo-600">{formatCurrency(item.selling_price)}</p>
+                      <p className="text-xs text-indigo-600">
+                        {formatCurrency(unitPriceOf(item))}
+                        {priceMode === 'wholesale' && !hasWholesale(item) && (
+                          <span className="text-amber-600"> · pas de prix gros, prix détail</span>
+                        )}
+                      </p>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <button
