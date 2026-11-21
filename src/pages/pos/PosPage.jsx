@@ -764,7 +764,7 @@ export default function PosPage() {
                         <td className="px-4 py-3">
                           <div className="font-bold text-indigo-600 whitespace-nowrap">{formatCurrency(product.selling_price)}</div>
                           {hasWholesale(product) && (
-                            <div className="text-xs text-gray-500 whitespace-nowrap">Gros : {formatCurrency(product.wholesale_price)}</div>
+                            <div className="text-xs font-semibold text-emerald-700 whitespace-nowrap">Gros : {formatCurrency(product.wholesale_price)}</div>
                           )}
                         </td>
                         <td className="px-4 py-3">
@@ -810,7 +810,7 @@ export default function PosPage() {
                   type="button"
                   aria-pressed={priceMode === mode}
                   onClick={() => setPriceMode(mode)}
-                  className={`py-2 rounded-md transition-colors ${priceMode === mode ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                  className={`py-2 rounded-md transition-colors ${priceMode === mode ? `bg-white shadow-sm ${mode === 'wholesale' ? 'text-emerald-700' : 'text-indigo-700'}` : 'text-gray-600 hover:text-gray-900'}`}
                 >
                   {label}
                 </button>

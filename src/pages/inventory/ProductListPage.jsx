@@ -234,7 +234,9 @@ Il disparaîtra du stock et de la caisse. Les ventes passées qui le citent sont
                     {hasPrice(product) ? (
                       <div className="text-right shrink-0">
                         <p className="font-bold text-gray-900">{formatCurrency(product.selling_price)}</p>
-                        <p className="text-xs text-gray-500">Gros : {formatCurrency(product.wholesale_price)}</p>
+                        {Number(product.wholesale_price) > 0 && (
+                          <p className="text-xs font-semibold text-emerald-700">Gros : {formatCurrency(product.wholesale_price)}</p>
+                        )}
                       </div>
                     ) : (
                       <Badge colorClass="bg-amber-100 text-amber-800 shrink-0">Prix à fixer</Badge>
@@ -328,7 +330,7 @@ Il disparaîtra du stock et de la caisse. Les ventes passées qui le citent sont
                           <Badge colorClass="bg-amber-100 text-amber-800">Prix à fixer</Badge>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-gray-700">
+                      <td className="px-6 py-4 font-semibold text-emerald-700">
                         {Number(product.wholesale_price) > 0 ? formatCurrency(product.wholesale_price) : '-'}
                       </td>
                       <td className="px-6 py-4 text-center text-gray-700">{soldOf(product)}</td>
