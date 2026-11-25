@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Mail, Lock, AlertTriangle } from 'lucide-react';
+import { Phone, Lock, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/common/Button';
 
@@ -9,7 +9,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,7 +26,7 @@ export default function LoginPage() {
     setErrorMsg('');
     setLoading(true);
 
-    const result = await signIn(email.trim(), password);
+    const result = await signIn(identifier.trim(), password);
     setLoading(false);
 
     if (result.success) {
@@ -34,7 +34,7 @@ export default function LoginPage() {
     } else {
       setErrorMsg(
         result.error === 'Invalid login credentials'
-          ? 'Email ou mot de passe incorrect.'
+          ? 'Téléphone ou mot de passe incorrect.'
           : result.error
       );
     }
@@ -60,16 +60,18 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label htmlFor="login-identifier" className="block text-sm font-medium text-gray-700 mb-1">Numéro de téléphone</label>
             <div className="relative">
-              <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              {/* Texte libre : le patron peut encore se connecter avec son email */}
               <input
-                type="email"
+                id="login-identifier"
+                type="text"
                 required
-                autoComplete="email"
-                placeholder="vous@boutique.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="username"
+                placeholder="Ex: 70 12 34 56"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>

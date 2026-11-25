@@ -46,19 +46,26 @@ Deno.serve(async (req) => {
   }
 
   // 3. Valider la demande
-  let body: { email?: string; password?: string; full_name?: string; role?: string };
+  let body: { phone?: string; email?: string; password?: string; full_name?: string; role?: string };
   try {
     body = await req.json();
   } catch {
     return json({ error: 'Requête invalide' }, 400);
   }
 
-  const email = (body.email || '').trim().toLowerCase();
+  // Connexion par téléphone : identifiant interne « 70123456@tel.btnt-services.app »
+  // (même règle que src/utils/loginId.js : les garder identiques)
+  let phone = (body.phone || '').replace(/\D/g, '');
+  if (phone.startsWith('00')) phone = phone.slice(2);
+  if (phone.startsWith('226') && phone.length === 11) phone = phone.slice(3);
+  if (body.phone && (phone.length < 8 || phone.length > 15)) return json({ error: 'Numéro de téléphone invalide' }, 400);
+
+  const email = phone ? `${phone}@tel.btnt-services.app` : (body.email || '').trim().toLowerCase();
   const password = body.password || '';
   const fullName = (body.full_name || '').trim();
   const role = ['admin', 'cashier', 'seller'].includes(body.role ?? '') ? body.role! : 'seller';
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: 'Email invalide' }, 400);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: 'Téléphone ou email invalide' }, 400);
   if (password.length < 8) return json({ error: 'Le mot de passe doit contenir au moins 8 caractères' }, 400);
 
   // 4. Créer le compte (email confirmé d'office : l'admin remet le mot de passe en main propre)
@@ -72,7 +79,8 @@ Deno.serve(async (req) => {
   if (createError || !created?.user) {
     const message = createError?.message || 'Création impossible';
     const duplicate = /already|registered|exists/i.test(message);
-    return json({ error: duplicate ? 'Un compte existe déjà avec cet email' : message }, duplicate ? 409 : 400);
+    const label = phone ? 'ce numéro' : 'cet email';
+    return json({ error: duplicate ? `Un compte existe déjà avec ${label}` : message }, duplicate ? 409 : 400);
   }
 
   // 5. Le profil est créé par le déclencheur handle_new_user : on fixe le nom et le rôle
@@ -81,7 +89,7 @@ Deno.serve(async (req) => {
     .upsert({
       id: created.user.id,
       email,
-      full_name: fullName || email.split('@')[0],
+      full_name: fullName || phone || email.split('@')[0],
       role,
     })
     .select()

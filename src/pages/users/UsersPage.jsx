@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useProfiles } from '../../hooks/useProfiles';
 import { useAuth, ROLE_LABELS } from '../../context/AuthContext';
+import { normalizePhone, loginIdOf, displayLoginId } from '../../utils/loginId';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 import Badge from '../../components/common/Badge';
@@ -27,7 +28,7 @@ const ROLE_DESCRIPTIONS = {
   seller: 'Réception des accessoires et liste des produits (prix, stock). Ni caisse, ni crédits, ni prix d\'achat.',
 };
 
-const emptyCreateForm = { fullName: '', email: '', password: '', role: 'seller' };
+const emptyCreateForm = { fullName: '', phone: '', password: '', role: 'seller' };
 
 // Mot de passe lisible de 10 caractères (sans 0/O, 1/l/I pour éviter les confusions)
 function generatePassword() {
@@ -60,20 +61,24 @@ export default function UsersPage() {
     e.preventDefault();
     setCreateError('');
 
-    const email = createForm.email.trim().toLowerCase();
-    if (profiles.some((p) => p.email?.toLowerCase() === email)) {
-      setCreateError('Un compte existe déjà avec cet email.');
+    const phone = normalizePhone(createForm.phone);
+    if (phone.length < 8) {
+      setCreateError('Numéro de téléphone invalide (8 chiffres minimum).');
+      return;
+    }
+    if (profiles.some((p) => p.email?.toLowerCase() === loginIdOf(phone))) {
+      setCreateError('Un compte existe déjà avec ce numéro.');
       return;
     }
 
     setCreating(true);
-    const result = await createUser({ ...createForm, email, fullName: createForm.fullName.trim() });
+    const result = await createUser({ ...createForm, phone, fullName: createForm.fullName.trim() });
     setCreating(false);
 
     if (result.success) {
       setCreatedAccount({
-        name: result.data.full_name || email,
-        email,
+        name: result.data.full_name || phone,
+        phone,
         password: createForm.password,
         role: result.data.role,
       });
@@ -83,7 +88,7 @@ export default function UsersPage() {
   };
 
   const handleCopyCredentials = async () => {
-    const text = `Connexion BTNT Services\nEmail : ${createdAccount.email}\nMot de passe : ${createdAccount.password}`;
+    const text = `Connexion BTNT Services\nTéléphone : ${createdAccount.phone}\nMot de passe : ${createdAccount.password}`;
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -179,7 +184,7 @@ export default function UsersPage() {
         <Info className="w-4 h-4 shrink-0 mt-0.5" />
         <span>
           « Ajouter un utilisateur » crée le compte avec un mot de passe que vous lui transmettez.
-          Le compte peut se connecter immédiatement, sans confirmation par email.
+          Le compte se connecte immédiatement avec son numéro de téléphone et son mot de passe.
         </span>
       </div>
 
@@ -190,7 +195,7 @@ export default function UsersPage() {
             <thead>
               <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
                 <th className="px-6 py-3">Nom</th>
-                <th className="px-6 py-3">Email</th>
+                <th className="px-6 py-3">Identifiant</th>
                 <th className="px-6 py-3">Rôle</th>
                 <th className="px-6 py-3">Ajouté le</th>
                 <th className="px-6 py-3 text-right">Actions</th>
@@ -215,7 +220,7 @@ export default function UsersPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">
-                          {(profile.full_name || profile.email || '?').charAt(0).toUpperCase()}
+                          {(profile.full_name || displayLoginId(profile.email) || '?').charAt(0).toUpperCase()}
                         </div>
                         <span className="font-semibold text-gray-900">
                           {profile.full_name || 'Sans nom'}
@@ -223,7 +228,7 @@ export default function UsersPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-600">{profile.email || '-'}</td>
+                    <td className="px-6 py-4 text-gray-600">{displayLoginId(profile.email) || '-'}</td>
                     <td className="px-6 py-4">
                       <Badge colorClass={ROLE_COLORS[profile.role] || ROLE_COLORS.seller}>
                         {ROLE_LABELS[profile.role] || profile.role}
@@ -262,7 +267,7 @@ export default function UsersPage() {
               {createdAccount.name} peut maintenant se connecter.
             </div>
             <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm space-y-1 font-mono">
-              <p>Email : {createdAccount.email}</p>
+              <p>Téléphone : {createdAccount.phone}</p>
               <p>Mot de passe : {createdAccount.password}</p>
               <p className="font-sans text-xs text-gray-500">Rôle : {ROLE_LABELS[createdAccount.role]}</p>
             </div>
@@ -293,14 +298,15 @@ export default function UsersPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email (identifiant de connexion)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Numéro de téléphone (identifiant de connexion)</label>
               <input
-                type="email"
+                type="tel"
                 required
                 autoComplete="off"
-                placeholder="moussa@boutique.com"
-                value={createForm.email}
-                onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                inputMode="tel"
+                placeholder="Ex: 70 12 34 56"
+                value={createForm.phone}
+                onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -352,7 +358,7 @@ export default function UsersPage() {
       <Modal
         isOpen={!!editingProfile}
         onClose={() => setEditingProfile(null)}
-        title={`Modifier : ${editingProfile?.email || ''}`}
+        title={`Modifier : ${displayLoginId(editingProfile?.email)}`}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../config/supabaseClient';
+import { displayLoginId } from '../utils/loginId';
 
 /**
  * Liste des profils utilisateurs (nom, rôle). Sert à afficher le vendeur d'une vente
@@ -53,10 +54,10 @@ export function useProfiles() {
   };
 
   // Créer un compte via l'Edge Function create-user (administrateurs uniquement)
-  const createUser = async ({ email, password, fullName, role }) => {
+  const createUser = async ({ phone, password, fullName, role }) => {
     try {
       const { data, error } = await supabase.functions.invoke('create-user', {
-        body: { email, password, full_name: fullName, role },
+        body: { phone, password, full_name: fullName, role },
       });
 
       if (error) {
@@ -83,7 +84,7 @@ export function useProfiles() {
   const nameOf = (id) => {
     if (!id) return null;
     const profile = profiles.find((p) => p.id === id);
-    return profile ? profile.full_name || profile.email : null;
+    return profile ? profile.full_name || displayLoginId(profile.email) : null;
   };
 
   return { profiles, loading, fetchProfiles, updateProfile, createUser, nameOf };

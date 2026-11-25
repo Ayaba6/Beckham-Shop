@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from '../config/supabaseClient';
+import { displayLoginId, loginIdOf } from '../utils/loginId';
 
 const AuthContext = createContext();
 
@@ -59,9 +60,9 @@ export function AuthProvider({ children }) {
     };
   }, [loadProfile]);
 
-  // Connexion par email et mot de passe
-  const signIn = async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+  // Connexion par téléphone (ou email) et mot de passe
+  const signIn = async (identifier, password) => {
+    const { error } = await supabase.auth.signInWithPassword({ email: loginIdOf(identifier), password });
     if (error) {
       console.error('Erreur de connexion:', error.message);
       return { success: false, error: error.message };
@@ -89,7 +90,7 @@ export function AuthProvider({ children }) {
         // Le vendeur réceptionne le stock et consulte les produits ; il n'encaisse pas
         isSeller: role === 'seller',
         profilesMissing,
-        displayName: profile?.full_name || user?.email || 'Utilisateur',
+        displayName: profile?.full_name || displayLoginId(user?.email) || 'Utilisateur',
         loading,
         signIn,
         signOut,
