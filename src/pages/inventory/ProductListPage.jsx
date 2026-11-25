@@ -7,7 +7,8 @@ import {
   AlertTriangle,
   Edit2,
   PackagePlus,
-  Trash2
+  Trash2,
+  RefreshCw
 } from 'lucide-react';
 import RestockModal from '../../components/inventory/RestockModal';
 import { useAuth } from '../../context/AuthContext';
@@ -47,12 +48,20 @@ export default function ProductListPage() {
 
   // Quantités vendues par produit (total calculé par la base)
   const [soldById, setSoldById] = useState({});
-  useEffect(() => {
+  const fetchSold = () =>
     supabase.rpc('get_sold_quantities').then(({ data, error }) => {
       if (error) console.error('Erreur quantités vendues:', error.message);
       setSoldById(Object.fromEntries((data || []).map((r) => [r.product_id, Number(r.sold)])));
     });
+  useEffect(() => {
+    fetchSold();
   }, []);
+
+  // Actualiser : stock, prix et quantités vendues (ventes faites entre-temps en caisse)
+  const handleRefresh = () => {
+    refreshProducts();
+    fetchSold();
+  };
   const soldOf = (product) => soldById[product.id] || 0;
 
   const handleDelete = async (product) => {
@@ -197,10 +206,19 @@ Il disparaîtra du stock et de la caisse. Les ventes passées qui le citent sont
           <h1 className="text-2xl font-bold text-gray-900">Gestion des Stocks d'Accessoires</h1>
           <p className="text-sm text-gray-500">Pièces et accessoires par téléphone : prix, ventes et stock restant.</p>
         </div>
-        <Button onClick={handleOpenAdd}>
-          <Plus className="w-4 h-4" />
-          Nouvel Accessoire
-        </Button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefresh}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl text-sm font-medium transition-colors shadow-sm"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Actualiser
+          </button>
+          <Button onClick={handleOpenAdd}>
+            <Plus className="w-4 h-4" />
+            Nouvel Accessoire
+          </Button>
+        </div>
       </div>
 
       <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
