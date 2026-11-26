@@ -7,11 +7,13 @@ import {
   CheckCircle2,
   RefreshCw,
   Receipt,
-  Wrench
+  Wrench,
+  Trash2
 } from 'lucide-react';
 import { supabase } from '../../config/supabaseClient';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { REPAIR_STATUSES } from '../../utils/constants';
+import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 import Badge from '../../components/common/Badge';
@@ -19,6 +21,7 @@ import Badge from '../../components/common/Badge';
 const emptyForm = { full_name: '', phone: '' };
 
 export default function ClientsPage() {
+  const { isAdmin } = useAuth();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -133,6 +136,37 @@ export default function ClientsPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  // Supprimer un client (administrateur) : seulement s'il n'a ni vente, ni crédit, ni réparation,
+  // pour ne jamais perdre une dette ou un appareil en atelier
+  const handleDelete = async (customer) => {
+    const [salesRes, repairsRes] = await Promise.all([
+      supabase.from('sales').select('id', { count: 'exact', head: true }).eq('customer_id', customer.id),
+      supabase.from('repairs').select('id', { count: 'exact', head: true }).eq('customer_id', customer.id),
+    ]);
+    if (salesRes.error || repairsRes.error) {
+      alert('Erreur : ' + (salesRes.error || repairsRes.error).message);
+      return;
+    }
+    const salesCount = salesRes.count || 0;
+    const repairsCount = repairsRes.count || 0;
+    if (salesCount + repairsCount > 0) {
+      alert(
+        `Impossible de supprimer « ${customer.full_name || 'ce client'} » : il a ${salesCount} vente(s) ou crédit(s) ` +
+          `et ${repairsCount} réparation(s). Son historique doit être conservé.`
+      );
+      return;
+    }
+    if (!window.confirm(`Supprimer définitivement le client « ${customer.full_name || 'Sans nom'} » ?`)) return;
+
+    const { data, error } = await supabase.from('customers').delete().eq('id', customer.id).select('id');
+    if (error || !data?.length) {
+      alert('Erreur : ' + (error?.message || 'suppression refusée (réservée aux administrateurs).'));
+      return;
+    }
+    setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
+    showSuccess('Client supprimé.');
   };
 
   // Ouvrir la fiche client avec ses achats et ses réparations
@@ -253,6 +287,16 @@ export default function ClientsPage() {
                 >
                   <Edit2 className="w-4 h-4" />
                 </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(customer)}
+                    className="p-2 text-red-700 bg-red-50 rounded-lg shrink-0"
+                    aria-label={`Supprimer ${customer.full_name || 'le client'}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             ))
           )}
@@ -318,6 +362,16 @@ export default function ClientsPage() {
                           <Edit2 className="w-3.5 h-3.5" />
                           Modifier
                         </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDelete(customer)}
+                            title="Supprimer le client"
+                            aria-label={`Supprimer ${customer.full_name || 'le client'}`}
+                            className="p-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
