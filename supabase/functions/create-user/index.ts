@@ -1,4 +1,5 @@
-// Edge Function : création d'un utilisateur par un administrateur.
+// Edge Function : création, changement de mot de passe (action « set_password ») et suppression
+// (action « delete ») d'un utilisateur par un administrateur.
 // La clé service_role (fournie automatiquement par Supabase) reste côté serveur.
 //
 // Déploiement : Supabase > Edge Functions > Deploy a new function > Via Editor,
@@ -46,11 +47,43 @@ Deno.serve(async (req) => {
   }
 
   // 3. Valider la demande
-  let body: { phone?: string; email?: string; password?: string; full_name?: string; role?: string };
+  let body: {
+    action?: string; user_id?: string;
+    phone?: string; email?: string; password?: string; full_name?: string; role?: string;
+  };
   try {
     body = await req.json();
   } catch {
     return json({ error: 'Requête invalide' }, 400);
+  }
+
+  // Nouveau mot de passe (action « set_password ») : l'admin le remet en main propre
+  if (body.action === 'set_password') {
+    const userId = body.user_id || '';
+    if (!userId) return json({ error: 'Utilisateur manquant' }, 400);
+    if ((body.password || '').length < 8) {
+      return json({ error: 'Le mot de passe doit contenir au moins 8 caractères' }, 400);
+    }
+    const { error: passwordError } = await admin.auth.admin.updateUserById(userId, { password: body.password });
+    if (passwordError) return json({ error: `Mot de passe non modifié : ${passwordError.message}` }, 400);
+    return json({ updated: userId });
+  }
+
+  // Suppression (action « delete ») : le compte est bloqué et masqué, pas effacé,
+  // pour garder son nom sur les ventes, caisses et crédits passés
+  if (body.action === 'delete') {
+    const userId = body.user_id || '';
+    if (!userId) return json({ error: 'Utilisateur manquant' }, 400);
+    if (userId === caller.user.id) return json({ error: 'Vous ne pouvez pas supprimer votre propre compte' }, 400);
+
+    const { error: banError } = await admin.auth.admin.updateUserById(userId, { ban_duration: '876000h' });
+    if (banError) return json({ error: `Blocage impossible : ${banError.message}` }, 400);
+
+    const { error: disableError } = await admin.from('profiles').update({ disabled: true }).eq('id', userId);
+    if (disableError) {
+      return json({ error: `Compte bloqué, mais pas masqué de la liste : ${disableError.message}` }, 500);
+    }
+    return json({ deleted: userId });
   }
 
   // Connexion par téléphone : identifiant interne « 70123456@tel.btnt-services.app »

@@ -7,7 +7,8 @@ import {
   Info,
   UserPlus,
   KeyRound,
-  Copy
+  Copy,
+  Trash2
 } from 'lucide-react';
 import { useProfiles } from '../../hooks/useProfiles';
 import { useAuth, ROLE_LABELS } from '../../context/AuthContext';
@@ -38,7 +39,9 @@ function generatePassword() {
 }
 
 export default function UsersPage() {
-  const { profiles, loading, fetchProfiles, updateProfile, createUser } = useProfiles();
+  const { profiles, loading, fetchProfiles, updateProfile, createUser, deleteUser, setUserPassword } = useProfiles();
+  // Les comptes supprimés restent en base (noms dans l'historique) mais ne sont plus listés
+  const activeProfiles = profiles.filter((p) => !p.disabled);
   const { user, profilesMissing, refreshProfile } = useAuth();
 
   // Création de compte
@@ -99,13 +102,27 @@ export default function UsersPage() {
   };
 
   const [editingProfile, setEditingProfile] = useState(null);
-  const [formData, setFormData] = useState({ full_name: '', role: 'seller' });
+  const [formData, setFormData] = useState({ full_name: '', role: 'seller', password: '' });
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
+  const handleDelete = async (profile) => {
+    const name = profile.full_name || displayLoginId(profile.email);
+    if (!window.confirm(`Supprimer le compte de « ${name} » ?
+
+Il ne pourra plus se connecter. Son nom reste sur les ventes et caisses qu'il a déjà faites.`)) return;
+    const result = await deleteUser(profile.id);
+    if (!result.success) {
+      alert('Erreur : ' + result.error);
+      return;
+    }
+    setSuccessMsg('Utilisateur supprimé.');
+    setTimeout(() => setSuccessMsg(''), 3000);
+  };
+
   const handleOpenEdit = (profile) => {
     setEditingProfile(profile);
-    setFormData({ full_name: profile.full_name || '', role: profile.role });
+    setFormData({ full_name: profile.full_name || '', role: profile.role, password: '' });
   };
 
   const handleSubmit = async (e) => {
@@ -119,7 +136,22 @@ export default function UsersPage() {
       if (!confirmed) return;
     }
 
+    // Nouveau mot de passe (optionnel) : enregistré d'abord, pour ne rien changer s'il est refusé
+    const newPassword = formData.password.trim();
+    if (newPassword && newPassword.length < 8) {
+      alert('Le mot de passe doit contenir au moins 8 caractères.');
+      return;
+    }
+
     setSaving(true);
+    if (newPassword) {
+      const passwordResult = await setUserPassword(editingProfile.id, newPassword);
+      if (!passwordResult.success) {
+        setSaving(false);
+        alert('Erreur : ' + passwordResult.error);
+        return;
+      }
+    }
     const result = await updateProfile(editingProfile.id, {
       full_name: formData.full_name.trim() || null,
       role: formData.role,
@@ -128,7 +160,7 @@ export default function UsersPage() {
 
     if (result.success) {
       setEditingProfile(null);
-      setSuccessMsg('Utilisateur mis à jour !');
+      setSuccessMsg(newPassword ? 'Utilisateur et mot de passe mis à jour !' : 'Utilisateur mis à jour !');
       setTimeout(() => setSuccessMsg(''), 3000);
       if (isSelf) refreshProfile();
     } else {
@@ -208,14 +240,14 @@ export default function UsersPage() {
                     Chargement des utilisateurs...
                   </td>
                 </tr>
-              ) : profiles.length === 0 ? (
+              ) : activeProfiles.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="px-6 py-8 text-center text-gray-400">
                     Aucun utilisateur trouvé.
                   </td>
                 </tr>
               ) : (
-                profiles.map((profile) => (
+                activeProfiles.map((profile) => (
                   <tr key={profile.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -238,13 +270,25 @@ export default function UsersPage() {
                       {new Date(profile.created_at).toLocaleDateString('fr-FR')}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => handleOpenEdit(profile)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium transition-colors"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                        Modifier
-                      </button>
+                      <div className="inline-flex items-center gap-2">
+                        <button
+                          onClick={() => handleOpenEdit(profile)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium transition-colors"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          Modifier
+                        </button>
+                        {profile.id !== user?.id && (
+                          <button
+                            onClick={() => handleDelete(profile)}
+                            title="Supprimer l'utilisateur"
+                            aria-label={`Supprimer ${profile.full_name || displayLoginId(profile.email)}`}
+                            className="p-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -383,6 +427,32 @@ export default function UsersPage() {
               <option value="admin">{ROLE_LABELS.admin}</option>
             </select>
             <p className="mt-1.5 text-xs text-gray-500">{ROLE_DESCRIPTIONS[formData.role]}</p>
+          </div>
+          <div>
+            <label htmlFor="edit-password" className="block text-sm font-medium text-gray-700 mb-1">Nouveau mot de passe</label>
+            <div className="flex gap-2">
+              <input
+                id="edit-password"
+                type="text"
+                minLength={8}
+                autoComplete="new-password"
+                placeholder="Laisser vide pour ne pas le changer"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="flex-1 min-w-0 px-3 py-2 text-sm font-mono border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setFormData({ ...formData, password: generatePassword() })}
+              >
+                <KeyRound className="w-4 h-4" />
+                Générer
+              </Button>
+            </div>
+            {formData.password && (
+              <p className="mt-1.5 text-xs text-amber-700">Notez-le avant d'enregistrer : il ne sera plus affiché.</p>
+            )}
           </div>
           <Button type="submit" isLoading={saving} className="w-full py-2.5">
             Enregistrer
