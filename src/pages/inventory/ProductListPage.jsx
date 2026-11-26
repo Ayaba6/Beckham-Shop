@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Package, 
   Plus, 
@@ -187,8 +188,13 @@ Il disparaîtra du stock et de la caisse. Les ventes passées qui le citent sont
     }
   };
 
+  // ?filtre=alerte (carte « Alertes stock » du tableau de bord) : seulement les articles à réapprovisionner
+  const [searchParams, setSearchParams] = useSearchParams();
+  const lowStockOnly = searchParams.get('filtre') === 'alerte';
+
   const accessoriesList = products.filter((p) => !p.is_serialized);
   const filteredProducts = accessoriesList.filter((p) =>
+    (!lowStockOnly || p.stock_quantity <= p.min_stock_alert) &&
     [p.name, p.brand, phoneLabel(p)].some((v) => v && v.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
@@ -231,6 +237,22 @@ Il disparaîtra du stock et de la caisse. Les ventes passées qui le citent sont
           className="w-full bg-transparent border-none text-sm focus:outline-none text-gray-800 placeholder-gray-400"
         />
       </div>
+
+      {lowStockOnly && (
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+          <span className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            Articles à réapprovisionner uniquement ({filteredProducts.length})
+          </span>
+          <button
+            type="button"
+            onClick={() => setSearchParams({})}
+            className="px-3 py-1.5 bg-white border border-amber-200 rounded-lg text-xs font-medium hover:bg-amber-100"
+          >
+            Voir tous les accessoires
+          </button>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         {/* Mobile : une carte par accessoire */}
